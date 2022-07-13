@@ -10,6 +10,9 @@ using namespace std;
 #include "GUIExpand.h"
 
 
+extern LPVOID ThisClass;
+
+
 
 GUIExpand * GUIExpander;
 
@@ -28,6 +31,7 @@ GUIExpand::GUIExpand ()
 	}
 #ifdef USEMEGAMAP
 	myMinimap= new FullScreenMinimap ( MyConfig->GetIniBool ( "FullScreenMinimap", FALSE), MyConfig->GetIniInt("MegamapFpsLimit", 60));
+	ThisClass = (LPVOID)myMinimap;
 #endif
 	
 	if (MyConfig->GetIniInt("MenuWidth", 0))

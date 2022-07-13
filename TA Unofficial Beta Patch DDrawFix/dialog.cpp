@@ -51,6 +51,12 @@ Dialog::Dialog(BOOL Vidmem_a)
 	ReadPos();
 	ReadSettings();
 	
+
+	//SetAll();
+	
+
+
+
 	LPDIRECTDRAW TADD = (IDirectDraw*)LocalShare->TADirectDraw;
 
 	DDSURFACEDESC ddsd;
@@ -104,6 +110,7 @@ Dialog::Dialog(BOOL Vidmem_a)
 
 Dialog::~Dialog()
 {
+	/*
 	if(lpDialogSurf)
 		lpDialogSurf->Release();
 	if(lpBackground)
@@ -140,6 +147,8 @@ Dialog::~Dialog()
 	WritePos();
 	WriteSettings();
 	LocalShare->Dialog = NULL;
+
+	*/
 }
 
 void Dialog::ShowDialog()
@@ -172,7 +181,7 @@ void Dialog::HideDialog()
 	WriteSettings();
 }
 
-void Dialog::BlitDialog(LPDIRECTDRAWSURFACE DestSurf)
+void Dialog::BlitDialog(LPBYTE DestSurf)
 {
 	if(First)
 	{
@@ -181,13 +190,13 @@ void Dialog::BlitDialog(LPDIRECTDRAWSURFACE DestSurf)
 	}
 	if (DialogVisible)
 	{
-		if(lpDialogSurf->IsLost() != DD_OK)
-		{
-			RestoreAll();
-		}
+		//if(lpDialogSurf->IsLost() != DD_OK)
+		//{
+		//	RestoreAll();
+		//}
 
-		if(!DialogVisible)
-			return;
+		//if(!DialogVisible)
+		//	return;
 
 
 		RECT Dest;
@@ -196,16 +205,35 @@ void Dialog::BlitDialog(LPDIRECTDRAWSURFACE DestSurf)
 		Dest.right = posX + DialogWidth;
 		Dest.bottom = posY + DialogHeight;
 
-		//DestSurf->Blt(&Dest, lpDialogSurf, NULL, DDBLT_ASYNC, NULL);
- 		if(DestSurf->Blt(&Dest, lpDialogSurf, NULL, DDBLT_ASYNC, NULL)!=DD_OK)
-		{
- 			DestSurf->Blt(&Dest, lpDialogSurf, NULL, DDBLT_WAIT, NULL);
- 		}
 
-		if(CursorPosX!=-1 && CursorPosY!=-1)
+		DDSURFACEDESC srcSurfDesc;
+
+		if (lpDialogSurf->Lock(NULL, &srcSurfDesc, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, 0) == DD_OK)
 		{
-			BlitCursor(DestSurf, CursorPosX, CursorPosY);
+			for (int y = 0; y < DialogHeight; y++)
+			{
+				memcpy((void*)((LPBYTE)DestSurf + ((y + Dest.top) * (*TAmainStruct_PtrPtr)->ScreenWidth) + Dest.left), (void*)((LPBYTE)srcSurfDesc.lpSurface + (y * DialogWidth)), DialogWidth);
+			}
+
+			lpDialogSurf->Unlock(NULL);
 		}
+
+
+
+
+
+
+
+		////DestSurf->Blt(&Dest, lpDialogSurf, NULL, DDBLT_ASYNC, NULL);
+ 	//	if(DestSurf->Blt(&Dest, lpDialogSurf, NULL, DDBLT_ASYNC, NULL)!=DD_OK)
+		//{
+ 	//		DestSurf->Blt(&Dest, lpDialogSurf, NULL, DDBLT_WAIT, NULL);
+ 	//	}
+
+		//if(CursorPosX!=-1 && CursorPosY!=-1)
+		//{
+		//	BlitCursor(DestSurf, CursorPosX, CursorPosY);
+		//}
 	}
 }
 
@@ -1358,13 +1386,13 @@ void Dialog::DrawVisibleButton()
 	DrawText(lpDialogSurf, SetVisiblePosX+10+SetVisiblePushed, SetVisiblePosY+4+SetVisiblePushed, "Set Visible");
 }
 
-void Dialog::BlitCursor(LPDIRECTDRAWSURFACE DestSurf, int x, int y)
+void Dialog::BlitCursor(LPBYTE /*LPDIRECTDRAWSURFACE*/ DestSurf, int x, int y)
 {
-	if (NULL==lpCursor
-		||lpCursor->IsLost ( ))
-	{
-		RestoreCursor ( );
-	}
+	//if (NULL==lpCursor
+	//	||lpCursor->IsLost ( ))
+	//{
+	//	RestoreCursor ( );
+	//}
 	//blit cursor
 	DDSURFACEDESC ddsc;
 	DDRAW_INIT_STRUCT(ddsc);
@@ -1388,10 +1416,27 @@ void Dialog::BlitCursor(LPDIRECTDRAWSURFACE DestSurf, int x, int y)
 	Src.top= 0;
 	Src.right= ddsc.dwWidth;
 	Src.bottom= ddsc.dwHeight;
-	if(DestSurf->Blt(&Dest, lpCursor, &Src, DDBLT_ASYNC | DDBLT_KEYSRCOVERRIDE, &ddbltfx)!=DD_OK)
+
+
+	DDSURFACEDESC srcSurfDesc;
+
+	if (lpCursor->Lock(NULL, &srcSurfDesc, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, 0))
 	{
-		DestSurf->Blt(&Dest, lpCursor, &Src, DDBLT_WAIT | DDBLT_KEYSRCOVERRIDE, &ddbltfx);
+		for (size_t y = 0; y < ddsc.dwHeight; y++)
+		{
+			// fix draw on edge cases
+			memcpy((void*)((LPBYTE)DestSurf + ((y + Dest.top) * (*TAmainStruct_PtrPtr)->ScreenWidth) + Dest.left), (void*)((LPBYTE)srcSurfDesc.lpSurface + (y * Dest.bottom)), Dest.right);
+		}
+
+		lpCursor->Unlock(NULL);
 	}
+
+
+
+	//if(DestSurf->Blt(&Dest, lpCursor, &Src, DDBLT_ASYNC | DDBLT_KEYSRCOVERRIDE, &ddbltfx)!=DD_OK)
+	//{
+	//	DestSurf->Blt(&Dest, lpCursor, &Src, DDBLT_WAIT | DDBLT_KEYSRCOVERRIDE, &ddbltfx);
+	//}
 }
 
 void Dialog::SetVisibleList()

@@ -67,20 +67,20 @@ CIncome::CIncome(BOOL VidMem)
 
 CIncome::~CIncome()
 {
-	if (lpIncomeSurf)
-		lpIncomeSurf->Release();
+	//if (lpIncomeSurf)
+	//	lpIncomeSurf->Release();
 
-	lpIncomeSurf = NULL;
-	WritePos();
+	//lpIncomeSurf = NULL;
+	//WritePos();
 }
 
-void CIncome::BlitIncome(LPDIRECTDRAWSURFACE DestSurf)
+void CIncome::BlitIncome(LPBYTE DestSurf)
 {
-	if (lpIncomeSurf->IsLost() != DD_OK)
-	{
-		if (lpIncomeSurf->Restore() != DD_OK)
-			return;
-	}
+	//if (lpIncomeSurf->IsLost() != DD_OK)
+	//{
+	//	if (lpIncomeSurf->Restore() != DD_OK)
+	//		return;
+	//}
 	BlitState++;
 
 	//ShowAllIncome();
@@ -133,17 +133,37 @@ void CIncome::BlitIncome(LPDIRECTDRAWSURFACE DestSurf)
 		ddbltfx.ddckSrcColorkey.dwColorSpaceLowValue = 1;
 		ddbltfx.ddckSrcColorkey.dwColorSpaceHighValue = 1;
 
-		//DestSurf->Blt(&Dest, lpIncomeSurf, &Source, DDBLT_ASYNC | DDBLT_KEYSRCOVERRIDE, &ddbltfx);
-		if (DestSurf->Blt(&Dest, lpIncomeSurf, &Source, DDBLT_ASYNC | DDBLT_KEYSRCOVERRIDE, &ddbltfx) != DD_OK)
+
+
+		DDSURFACEDESC srcSurfDesc;
+
+		if (lpIncomeSurf->Lock(NULL, &srcSurfDesc, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, 0) == DD_OK)
 		{
-			DestSurf->Blt(&Dest, lpIncomeSurf, &Source, DDBLT_WAIT | DDBLT_KEYSRCOVERRIDE, &ddbltfx);
+			for (int y = 0; y < Source.bottom; y++)
+			{
+				memcpy((void*)((LPBYTE)DestSurf + ((y + Dest.top) * (*TAmainStruct_PtrPtr)->ScreenWidth) + Dest.left), (void*)((LPBYTE)srcSurfDesc.lpSurface + (y * PlayerWidth)), PlayerWidth);
+			}
+
+			lpIncomeSurf->Unlock(NULL);
 		}
 
-		//BlitCursor
-		if (inRect(CursorY, CursorX))
-		{
-			((Dialog*)LocalShare->Dialog)->BlitCursor(DestSurf, CursorX, CursorY);
-		}
+
+
+
+
+
+		////DestSurf->Blt(&Dest, lpIncomeSurf, &Source, DDBLT_ASYNC | DDBLT_KEYSRCOVERRIDE, &ddbltfx);
+		//if (lpIncomeSurf->Blt(&Dest, lpIncomeSurf, &Source, DDBLT_ASYNC | DDBLT_KEYSRCOVERRIDE, &ddbltfx) != DD_OK)
+		//{
+		//	HRESULT result;
+		//	result = DestSurf->Blt(&Dest, lpIncomeSurf, &Source, DDBLT_WAIT | DDBLT_KEYSRCOVERRIDE, &ddbltfx);
+		//}
+
+		////BlitCursor
+		//if (inRect(CursorY, CursorX))
+		//{
+		//	((Dialog*)LocalShare->Dialog)->BlitCursor(DestSurf, CursorX, CursorY);
+		//}
 	}
 
 }
@@ -199,6 +219,13 @@ int CIncome::ShowAllyIncome()
 	{
 		if (DataShare->allies[i])
 		{
+			DataShare->IsRunning = 100;
+			ShowPlayerIncome(i, 0, j * PlayerHight);
+			j++;
+		}
+		else if ((* (DWORD*)(*TAmainStruct_PtrPtr)->GameingState_Ptr) == gameingstate::SKIRMISH)
+		{ // currently an AI cheat
+
 			DataShare->IsRunning = 100;
 			ShowPlayerIncome(i, 0, j * PlayerHight);
 			j++;
@@ -626,13 +653,15 @@ bool CIncome::IsShow(RECT* Rect_p)
 		Rect_p->bottom = LocalShare->Height;
 	}
 
-	GameingState* GameingState_P = (*TAmainStruct_PtrPtr)->GameingState_Ptr;
-	if (GameingState_P
-		&& (gameingstate::MULTI == GameingState_P->State))
-	{
-		return true;
-	}
-	return false;
+	return true;
+
+	//GameingState* GameingState_P = (*TAmainStruct_PtrPtr)->GameingState_Ptr;
+	//if (GameingState_P
+	//	&& (gameingstate::MULTI == GameingState_P->State))
+	//{
+	//	return true;
+	//}
+	//return false;
 }
 
 void CIncome::CorrectPos()

@@ -85,6 +85,17 @@ CTAHook::CTAHook(BOOL VidMem)
 	int *PTR = (int*)0x00511de8;
 	TAdynmem = (TAdynmemStruct*)(*PTR);
 
+
+
+
+
+
+
+
+	VirtualKeyCode = 0x58;
+
+
+
 	//IDDrawSurface::OutptTxt ( "New CTAHook");
 }
 

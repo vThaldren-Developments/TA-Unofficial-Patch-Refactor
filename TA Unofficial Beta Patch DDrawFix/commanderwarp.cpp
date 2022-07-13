@@ -73,12 +73,12 @@ bool CWarp::Message(HWND WinProcWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 		case WM_LBUTTONDOWN:
 			xPos = LOWORD(lParam);
 			yPos = HIWORD(lParam);
-			if(WithinButton(xPos, yPos))
+			/*if(WithinButton(xPos, yPos))
 			{
 				StartedinButton = true;
 				ButtonDown = true;
 			}
-			else if(xPos>128 && yPos>32 && yPos<LocalShare->ScreenHeight-32)
+			else */if(xPos>128 && yPos>32 && yPos<LocalShare->ScreenHeight-32)
 			{
 				SetPos((xPos-128) + *MapX, (yPos) + *MapY);
 			}
@@ -86,13 +86,13 @@ bool CWarp::Message(HWND WinProcWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 			break;
 
 		case WM_LBUTTONUP:
-			if(WithinButton(LOWORD(lParam), HIWORD(lParam)) && StartedinButton)
-			{
-				DataShare->CommanderWarp = CLIENTDONE;
-				return true;
-			}
-			ButtonDown = false;
-			StartedinButton = false;
+			//if(WithinButton(LOWORD(lParam), HIWORD(lParam)) && StartedinButton)
+			//{
+			//	DataShare->CommanderWarp = CLIENTDONE;
+			//	return true;
+			//}
+			//ButtonDown = false;
+			//StartedinButton = false;
 			break;
 
 		case WM_MOUSEMOVE:
@@ -123,16 +123,16 @@ void CWarp::Blit(LPDIRECTDRAWSURFACE DestSurf)
 	{
 		if(DataShare->CommanderWarp == ENABLED)
 		{
-			Dialog *pDialog = (Dialog*)LocalShare->Dialog;
-			pDialog->DrawText(DestSurf, LocalShare->ScreenWidth - 400, 100, "Place your commander and click done");
-			BlitBtn(DestSurf);
-			Dialog *DialogPTR = (Dialog*)LocalShare->Dialog;
-			DialogPTR->BlitCursor(DestSurf, xPos, yPos);
+			//Dialog *pDialog = (Dialog*)LocalShare->Dialog;
+			//pDialog->DrawText(DestSurf, LocalShare->ScreenWidth - 400, 100, "Place your commander and click done");
+			//BlitBtn(DestSurf);
+			//Dialog *DialogPTR = (Dialog*)LocalShare->Dialog;
+			//DialogPTR->BlitCursor(DestSurf, xPos, yPos);
 		}
 		if(DataShare->CommanderWarp == CLIENTDONE)
 		{
-			Dialog *pDialog = (Dialog*)LocalShare->Dialog;
-			pDialog->DrawText(DestSurf, LocalShare->ScreenWidth - 400, 100, "Waiting for others to finish");
+			//Dialog *pDialog = (Dialog*)LocalShare->Dialog;
+			//pDialog->DrawText(DestSurf, LocalShare->ScreenWidth - 400, 100, "Waiting for others to finish");
 		}
 	}
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 
+
 class MappedMap
 {
 public:
@@ -11,9 +12,7 @@ public:
 	LPBYTE PictureInfo (LPBYTE * PixelBits_pp, POINT * Aspect);
 
 private:
-	LPBYTE MappedBits;
-	int Width_m;
-	int Height_m;
+
 
 	BYTE TAGrayTABLE[256];
 

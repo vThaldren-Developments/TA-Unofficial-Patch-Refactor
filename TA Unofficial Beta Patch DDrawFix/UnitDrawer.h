@@ -1,5 +1,7 @@
 #pragma once
 
+
+
 class FullScreenMinimap;
 class PCX;
 struct UnitStruct;
@@ -85,14 +87,14 @@ public:
 		int * argPlayerDotColor);
 	void ReSet (int Width, int Height);
 
-	LPDIRECTDRAWSURFACE InitSurface (LPDIRECTDRAW TADD, BOOL VidMem);
+	LPBYTE InitSurface (LPDIRECTDRAW TADD, BOOL VidMem);
 	void ReleaseSurface (void);
 
 // 	void LockEvent (void);
 // 	void UnLockEvent (void);
  	LPBYTE LockOn (LPBYTE * PixelBits_pp, POINT * Aspect);
  	void Unlock ( LPBYTE PixelBits_p);
-	LPDIRECTDRAWSURFACE GetSurface (void);
+	LPBYTE GetSurface (void);
 	void NowDrawUnits ( LPBYTE PixelBitsBack, POINT * AspectSrc);
 
 	LPBYTE UnitPicture (UnitStruct * unitPtr, int PlayerID, LPBYTE * PixelBits_pp,  POINT * Aspect);
@@ -112,7 +114,8 @@ private:
 	void InitHoverPicturePlayerColors  (int PlayeyColor, int FillColor, int UnSelectedColor,int HoverColor,  
 		LPBYTE * * PPCptr);
 private:
-	LPDIRECTDRAWSURFACE UnitsMapSfc;
+
+
 //	HANDLE Syncetux;
 	
 	HANDLE Thd_h;

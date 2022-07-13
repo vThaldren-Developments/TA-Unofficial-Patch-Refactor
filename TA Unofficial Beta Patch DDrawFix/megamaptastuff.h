@@ -1,5 +1,9 @@
 #pragma  once
 
+
+
+
+
 class FullScreenMinimap;
 class MegamapTAStuff 
 {
@@ -15,11 +19,12 @@ public:
 	void LockBlit_TA (LPVOID lpSurfaceMem, int dwWidth, int dwHeight, int lPitch, BOOL* Blit_b);
 	void LockBlit_MEGA (LPVOID lpSurfaceMem, int dwWidth, int dwHeight, int lPitch);
 
-	void UpdateTAGameStuff (BOOL DrawTAStuff, BOOL DrawOrder, BOOL* Blit_b);
-	void BlitTAGameStuff(LPDIRECTDRAWSURFACE DestSurf, LPRECT const gameScreen);
+	void UpdateTAGameStuffTA (LPDDSURFACEDESC realSurface, BOOL DrawTAStuff, BOOL DrawOrder, BOOL* Blit_b);
+	void UpdateTAGameStuffMEGA (LPVOID realSurface, BOOL DrawTAStuff, BOOL DrawOrder, BOOL* Blit_b);
+	void BlitTAGameStuff(LPBYTE DestSurf, LPRECT const gameScreen);
 	void DrawCursor(LPVOID lpSurfaceMem, int dwWidth, int dwHeight, int lPitch
 		, unsigned int X, unsigned int Y);
-	void DrawCursor (LPDIRECTDRAWSURFACE DestSurf, unsigned int X, unsigned int Y);
+	void DrawCursor (LPBYTE DestSurf, unsigned int X, unsigned int Y);
 
 	void TADrawRect ( OFFSCREEN * offscreen, int TAx1, int TAy1, int TAz1, 
 		int TAx2, int TAy2, int TAz2, 
@@ -37,7 +42,7 @@ public:
 	void InitSurface ( LPDIRECTDRAW TADD, BOOL VidMem);
 	void ReleaseSurface (void) ;
 
-	LPDIRECTDRAWSURFACE GetTAStuffSurface();
+	LPBYTE GetTAStuffSurface();
 
 
 private:
@@ -84,7 +89,11 @@ private:
 	LPDIRECTDRAWSURFACE Cursor_Surfc[0x15];
 	int CursorPerLine;
 
-	LPDIRECTDRAWSURFACE TAStuff_Surfc;
+	LPBYTE TAStuff_Surfc;
+
+
+	int width;
+	int height;
 
 };
 

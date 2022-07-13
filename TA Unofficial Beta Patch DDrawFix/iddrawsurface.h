@@ -127,6 +127,12 @@ LRESULT CALLBACK WinProc(HWND winprocwnd, UINT msg, WPARAM wparam, LPARAM lparam
 class IDDrawSurface : public IDirectDrawSurface
 {
 private:
+
+	DDSCAPS onlySurfaceCapsFRONT;
+	DDSCAPS onlySurfaceCapsBACK;
+	DDSURFACEDESC onlySurfaceDescFRONT;
+	DDSURFACEDESC onlySurfaceDescBACK;
+
 	bool lpBackLockOn;
 	bool FrontSurf;
 	bool Windowed;

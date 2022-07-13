@@ -21,6 +21,8 @@ using namespace std;
 #include "LimitCrack.h"
 #include "taHPI.h"
 #include "TAbugfix.h"
+
+
 #include "fullscreenminimap.h"
 #include "GUIExpand.h"
 
@@ -46,6 +48,8 @@ void *LocalpMapView;
 HANDLE TAHookhMemMap;
 void *TAHookpMapView;
 
+
+extern int LAYER = 0;
 
 
 char SystemDDraw[MAX_PATH];
@@ -211,15 +215,38 @@ void GetSysDir()
 {
 	SDDraw = LoadLibrary("pdraw.dll");
 
-	if (SDDraw == NULL)
-	{
+	//if (SDDraw == NULL)
+	//{
 		char Buff[MAX_PATH];
-		GetSystemDirectory(Buff, MAX_PATH);
+	//	memset(Buff, 0, MAX_PATH);
+	//	DWORD Chars = GetModuleFileName(NULL, Buff, MAX_PATH);
 
-		lstrcpyA(SystemDDraw, Buff);
-		lstrcatA(SystemDDraw, "\\ddraw.dll");
-		SDDraw = LoadLibrary(SystemDDraw);
-	}
+	//	while (Chars > 0 && Buff[Chars] != '\\')
+	//	{
+	//		Buff[Chars] = '\0';
+	//		Chars--;
+	//	}
+
+	//	memset(SystemDDraw, 0, MAX_PATH);
+
+	//	lstrcpyA(SystemDDraw, Buff);
+	//	lstrcatA(SystemDDraw, "ddraw.dll");
+
+	//	SDDraw = LoadLibrary(SystemDDraw);
+
+		if(SDDraw == NULL)
+		{
+			memset(Buff, 0, MAX_PATH);
+			//char Buff[MAX_PATH];
+			GetSystemDirectory(Buff, MAX_PATH);
+
+			memset(SystemDDraw, 0, MAX_PATH);
+
+			lstrcpyA(SystemDDraw, Buff);
+			lstrcatA(SystemDDraw, "\\ddraw.dll");
+			SDDraw = LoadLibrary(SystemDDraw);
+		}
+	//}
 }
 
 HRESULT WINAPI DirectDrawCreate(GUID FAR *lpGUID, LPDIRECTDRAW FAR *lplpDD, IUnknown FAR *pUnkOuter)
@@ -469,7 +496,7 @@ ALCDECL AheadLib_DDGetAttachedSurfaceLcl(void)
 // 导出函数
 ALCDECL AheadLib_DDInternalLock(void)
 {
-	GetAddress("DDInternalLock");
+GetAddress("DDInternalLock");
 	__asm JMP EAX;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -568,7 +595,7 @@ ALCDECL AheadLib_DirectDrawEnumerateW(void)
 // 导出函数
 ALCDECL AheadLib_DllCanUnloadNow(void)
 {
-	GetAddress("DllCanUnloadNow");
+GetAddress("DllCanUnloadNow");
 	__asm JMP EAX;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -634,7 +661,7 @@ ALCDECL AheadLib_RegisterSpecialCase(void)
 // 导出函数
 ALCDECL AheadLib_ReleaseDDThreadLock(void)
 {
-	GetAddress("ReleaseDDThreadLock");
+GetAddress("ReleaseDDThreadLock");
 	__asm JMP EAX;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -645,7 +672,7 @@ ALCDECL AheadLib_ReleaseDDThreadLock(void)
 // 导出函数
 ALCDECL AheadLib_SetAppCompatData(void)
 {
-	GetAddress("SetAppCompatData");
+GetAddress("SetAppCompatData");
 	__asm JMP EAX;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -437,8 +437,8 @@ void AlliesWhiteboard::DrawTextInput(LPDIRECTDRAWSURFACE DestSurf)
 	DialogPTR->DrawSmallText(DestSurf, BFHalfX-(InputBoxWidth/2)+14, BFHalfY-5, Text);
 
 	//draw cursor if textbox overlap
-	if((MouseX-128)>Dest.left-10 && (MouseX-128)<Dest.right && (MouseY-32)>Dest.top-34 && (MouseY-32)<Dest.bottom)
-		DialogPTR->BlitCursor(DestSurf, MouseX-128, MouseY-32);
+	//if((MouseX-128)>Dest.left-10 && (MouseX-128)<Dest.right && (MouseY-32)>Dest.top-34 && (MouseY-32)<Dest.bottom)
+		//DialogPTR->BlitCursor(DestSurf, MouseX-128, MouseY-32);
 }
 
 void AlliesWhiteboard::TextInputKeyDown(int Key)
@@ -1439,7 +1439,7 @@ void AlliesWhiteboard::GenerateLookupTables()
 	for (int ang = 0; ang < 360; ang++)
 	{
 		float theta = static_cast<float>(ang)*static_cast<float>(PI)/static_cast<float>(180);
-		cos_look[ang] = cos(theta);
-		sin_look[ang] = sin(theta);
+		cos_look[ang] = (float)cos(theta);
+		sin_look[ang] = (float)sin(theta);
 	}
 }

@@ -847,27 +847,27 @@ BOOL MegaMapControl::IsInMap(void)
 BOOL MegaMapControl::IsDrawCursor (int xPos, int yPos)
 {
 	RECT topControlRect;
-	if (((Dialog *)LocalShare->Dialog)->IsShow ( &topControlRect))
-	{
-		if ((topControlRect.left<=xPos)
-			&&(xPos<=topControlRect.right)
-			&&(topControlRect.top<=yPos)
-			&&(yPos<=topControlRect.bottom))
-		{
-			return FALSE;
-		}
-	}
+	//if (((Dialog *)LocalShare->Dialog)->IsShow ( &topControlRect))
+	//{
+	//	if ((topControlRect.left<=xPos)
+	//		&&(xPos<=topControlRect.right)
+	//		&&(topControlRect.top<=yPos)
+	//		&&(yPos<=topControlRect.bottom))
+	//	{
+	//		return FALSE;
+	//	}
+	//}
 
-	if (((CIncome *)LocalShare->Income)->IsShow ( &topControlRect))
-	{
-		if ((topControlRect.left<=xPos)
-			&&(xPos<=topControlRect.right)
-			&&(topControlRect.top<=yPos)
-			&&(yPos<=topControlRect.bottom))
-		{
-			return FALSE;
-		}
-	}
+	//if (((CIncome *)LocalShare->Income)->IsShow ( &topControlRect))
+	//{
+	//	if ((topControlRect.left<=xPos)
+	//		&&(xPos<=topControlRect.right)
+	//		&&(topControlRect.top<=yPos)
+	//		&&(yPos<=topControlRect.bottom))
+	//	{
+	//		return FALSE;
+	//	}
+	//}
 
 	if (TAmainStruct_Ptr->desktopGUI.TheActive_GUIMEM
 		&&(NULL!=TAmainStruct_Ptr->desktopGUI.TheActive_GUIMEM->per_active)

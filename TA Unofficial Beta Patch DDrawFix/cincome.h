@@ -41,7 +41,7 @@ class CIncome
   public:
     CIncome(BOOL VidMem);
     ~CIncome();
-    void BlitIncome(LPDIRECTDRAWSURFACE DestSurf);
+    void BlitIncome(LPBYTE DestSurf);
     void Set(int BGType);
     bool Message(HWND WinProchWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
 

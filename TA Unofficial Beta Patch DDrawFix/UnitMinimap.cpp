@@ -21,9 +21,18 @@
 using namespace std;
 #include "TAConfig.h"
 #include "ExternHotKey.h"
+#include "newglobals.h"
 
 
 #ifdef USEMEGAMAP
+
+
+
+LPBYTE UnitsMapSfc;
+int surfwidthunits;
+int surfheightunits;
+
+
 
 //hook .text:00466DC0 000 83 EC 1C                                                        sub     esp, 1Ch
 //  .text:00466E83 02C 0F BF 43 6C      movsx   eax, word ptr [ebx+(UnitsInGame.UnitPosition.X+2)] ; //0x6A
@@ -355,7 +364,7 @@ void UnitsMinimap::ReSet (int Width, int Height)
 
 	if (UnitsMapSfc)
 	{
-		UnitsMapSfc->Release ( );
+		free(UnitsMapSfc);
 		UnitsMapSfc= NULL;
 	}
 
@@ -368,12 +377,12 @@ void UnitsMinimap::ReSet (int Width, int Height)
 	return;
 }
 
-LPDIRECTDRAWSURFACE UnitsMinimap::InitSurface (LPDIRECTDRAW TADD, BOOL VidMem)
+LPBYTE UnitsMinimap::InitSurface (LPDIRECTDRAW TADD, BOOL VidMem)
 {
 	//IDDrawSurface::OutptTxt ( "UnitsMap Surface Init");
 	if (NULL!=UnitsMapSfc)
 	{
-		UnitsMapSfc->Release ( );
+		free(UnitsMapSfc);
 		UnitsMapSfc= NULL;
 	}
 
@@ -401,7 +410,11 @@ LPDIRECTDRAWSURFACE UnitsMinimap::InitSurface (LPDIRECTDRAW TADD, BOOL VidMem)
 		ddsd.dwWidth = Width_m;
 		ddsd.dwHeight = Height_m;
 
-		TADD->CreateSurface(&ddsd, &UnitsMapSfc, NULL);
+		if(UnitsMapSfc == 0)
+			UnitsMapSfc = (LPBYTE)malloc(Width_m * Height_m);
+
+
+		//TADD->CreateSurface(&ddsd, &UnitsMapSfc, NULL);
 	}
 
 	return UnitsMapSfc;
@@ -412,7 +425,7 @@ void UnitsMinimap::ReleaseSurface (void)
 {
 	if (NULL!=UnitsMapSfc)
 	{
-		UnitsMapSfc->Release ( );
+		free(UnitsMapSfc);
 	}
 	UnitsMapSfc= NULL;
 }
@@ -430,59 +443,60 @@ LPBYTE UnitsMinimap::LockOn (LPBYTE * PixelBits_pp, POINT * Aspect)
 {
 
 	//LockEvent ( );
-	DDSURFACEDESC ddsd;
-	DDRAW_INIT_STRUCT( ddsd);
-	if (UnitsMapSfc)
-	{
-		if(UnitsMapSfc->IsLost() != DD_OK)
-		{
-			if(UnitsMapSfc->Restore() != DD_OK)
-				return NULL;
-		}
+	//DDSURFACEDESC ddsd;
+	//DDRAW_INIT_STRUCT( ddsd);
+	//if (UnitsMapSfc)
+	//{
+		//if(UnitsMapSfc->IsLost() != DD_OK)
+		//{
+		//	if(UnitsMapSfc->Restore() != DD_OK)
+		//		return NULL;
+		//}
 
-		if (DD_OK==UnitsMapSfc->Lock ( NULL, &ddsd, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, NULL))
-		{
-			if (PixelBits_pp)
-			{
-				*PixelBits_pp= (LPBYTE )ddsd.lpSurface;
-			}
+		//if (DD_OK==UnitsMapSfc->Lock ( NULL, &ddsd, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, NULL))
+		//{
+			//if (PixelBits_pp)
+			//{
+			//	*PixelBits_pp= (LPBYTE)UnitsMapSfc;
+			//}
 
 			if (Aspect)
 			{
-				Aspect->x= ddsd.lPitch;
-				Aspect->y= ddsd.dwHeight;
+				Aspect->x= Width_m; // pitch?
+				Aspect->y= Height_m;
 			}
-		}
-	}
-	if (PixelBits_pp)
-	{
-		return *PixelBits_pp;
-	}
-	else
-	{
-		return (LPBYTE )ddsd.lpSurface;
-	}
-
+		//}
+	//}
+	//if (PixelBits_pp)
+	//{
+	//	return *PixelBits_pp;
+	//}
+	//else
+	//{
+	//	return (LPBYTE )ddsd.lpSurface;
+	//}
+			return 0;
 }
 
 void UnitsMinimap::Unlock ( LPBYTE PixelBits_p)
 {
-	if (UnitsMapSfc)
-	{
-		UnitsMapSfc->Unlock ( reinterpret_cast<LPVOID>(PixelBits_p));
-	}
+	//if (UnitsMapSfc)
+	//{
+	//	UnitsMapSfc->Unlock ( reinterpret_cast<LPVOID>(PixelBits_p));
+	//}
 	//UnLockEvent ( );
 }
 
-LPDIRECTDRAWSURFACE UnitsMinimap::GetSurface (void)
+LPBYTE UnitsMinimap::GetSurface (void)
 {
-	if (UnitsMapSfc)
-	{
-		if (DD_OK!=UnitsMapSfc->IsLost ( ))
-		{
-			UnitsMapSfc->Restore ( );
-		}
-	}
+	//if (UnitsMapSfc)
+	//{
+	//	//if (DD_OK!=UnitsMapSfc->IsLost ( ))
+	//	//{
+	//	//	UnitsMapSfc->Restore ( );
+	//	//}	
+	//	return UnitsMapSfc;
+	//}
 	return UnitsMapSfc;
 }
 
@@ -1343,6 +1357,10 @@ LPBYTE UnitsMinimap::UnitPicture(UnitStruct * unitPtr,int PlayerID, LPBYTE * Pix
 
 void UnitsMinimap::DrawUnit ( LPBYTE PixelBits, POINT * Aspect, UnitStruct * unitPtr)
 {
+
+	POINT TestAspect;
+
+
 	if ((NULL==PixelBits)
 		||(NULL==Aspect))
 	{
@@ -1383,10 +1401,12 @@ void UnitsMinimap::DrawUnit ( LPBYTE PixelBits, POINT * Aspect, UnitStruct * uni
 	DescRect.top= static_cast<int>(static_cast<float>(TAy)* (static_cast<float>(Height_m)/ static_cast<float>(parent->TAMAPTAPos.bottom)))- GafAspect.y/ 2;
 	DescRect.bottom= DescRect.top+ GafAspect.y;
 
-	Aspect->x= (Aspect->x)/ 4* 4;// avoid draw out of the surface, this x== pitch
+
+	TestAspect.x= (Aspect->x)/ 4* 4;// avoid draw out of the surface, this x== pitch
+	TestAspect.y = Aspect->y;
 	if ((DescRect.right<0)
-		||((Aspect->x)<DescRect.left)
-		||(Aspect->y<DescRect.top)
+		||((TestAspect.x)<DescRect.left)
+		||(TestAspect.y<DescRect.top)
 		||(DescRect.bottom<0))
 	{// out of map
 		return ;
@@ -1632,10 +1652,11 @@ void UnitsMinimap::NowDrawUnits ( LPBYTE PixelBitsBack, POINT * AspectSrc)
 		return ;
 	}
 	//IDDrawSurface::OutptTxt ( "Draw units");
-	POINT Aspect= {0, 0};
-	LPBYTE PixelBits= NULL;
+	POINT Aspect= {AspectSrc->x, AspectSrc->y};
 
-	LockOn ( &PixelBits, &Aspect);
+	//LPBYTE PixelBits= NULL;
+
+	//LockOn ( &PixelBits, &Aspect);
 	try 
 	{
 		do 
@@ -1644,19 +1665,19 @@ void UnitsMinimap::NowDrawUnits ( LPBYTE PixelBitsBack, POINT * AspectSrc)
 			{
 				break;
 			}
-			if (NULL==PixelBits)
-			{
-				break;
-			}
-				for (int i= 0; i<AspectSrc->y; ++i)
-				{
-					int Line= Aspect.x* i;
-					int SrcLine= AspectSrc->x* i;
-					for (int j= 0; j<AspectSrc->x; ++j)
-					{
-						PixelBits[Line+ j]= PixelBitsBack[SrcLine+ j];
-					}
-				}
+			//if (NULL==PixelBits)
+			//{
+			//	break;
+			//}
+				//for (int i= 0; i<AspectSrc->y; ++i)
+				//{
+				//	int Line= Aspect.x* i;
+				//	int SrcLine= AspectSrc->x* i;
+				//	for (int j= 0; j<AspectSrc->x; ++j)
+				//	{
+				//		PixelBits[Line+ j]= PixelBitsBack[SrcLine+ j];
+				//	}
+				//}
 
 				UnitStruct * Begin= (*TAmainStruct_PtrPtr)->BeginUnitsArray_p ;
 				UnitStruct * unitPtr;
@@ -1672,7 +1693,8 @@ void UnitsMinimap::NowDrawUnits ( LPBYTE PixelBitsBack, POINT * AspectSrc)
 					unitPtr= &Begin[RadarUnits_v[i].ID];
 					if (0!=unitPtr->UnitID)
 					{
-						DrawUnit (  PixelBits, &Aspect, unitPtr);
+						Aspect = { AspectSrc->x, AspectSrc->y };
+						DrawUnit (PixelBitsBack, &Aspect, unitPtr);
 					}
 				}
 		} while (false);
@@ -1683,7 +1705,7 @@ void UnitsMinimap::NowDrawUnits ( LPBYTE PixelBitsBack, POINT * AspectSrc)
 		;
 	}
 	
-	Unlock ( PixelBits);
+	//Unlock ( PixelBits);
 }
 
 

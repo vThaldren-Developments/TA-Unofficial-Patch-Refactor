@@ -5,6 +5,8 @@
 #include <tchar.h>
 #include <CString>
 #include "fullscreenminimap.h"
+#include "newglobals.h"
+
 
 #ifdef USEMEGAMAP
 
@@ -13,6 +15,15 @@ LPLOGPALETTE TNTtoMiniMap::TALogPalette_Ptr= NULL;
 int TNTtoMiniMap::PaletteRefCount= 0;
 
 extern RGBQUAD rqAry[256];
+
+extern LPBYTE MiniMapPixelBits; // real map picture - copy from this!!
+extern int mmpbWidth;
+extern int mmpbHeight;
+
+extern LPBYTE NewCopiedmmpb;
+extern LPBYTE savedMEGAMAPsurface;
+
+
 TNTtoMiniMap::TNTtoMiniMap ()
 {
 	myMiniMap= new MiniMapPicture ( 3200, 1800);
@@ -157,6 +168,11 @@ int TNTtoMiniMap::DrawMiniMap (LPBYTE DescPixelBitsBegin, int Width_I, int Heigh
 	return myMiniMap->DrawMiniMap ( DescPixelBitsBegin, &DescRect, Width_I, Height_I, NULL);
 }
 
+LPBYTE TNTtoMiniMap::PictureInfo(LPBYTE* PixelBits_pp, POINT* Aspect)
+{
+	return myMiniMap->PictureInfo(PixelBits_pp, Aspect);
+}
+
 void inline TNTtoMiniMap::CopyTileToTAPos_Inline (LPBYTE PixelBitsBuf, POINT * TAPos, __int16 TileIndex, PTNTHeaderStruct ArgcTNTHeader)
 {
 	int PiexelPerLine_I= ArgcTNTHeader->Width* 32;
@@ -186,10 +202,10 @@ LPBYTE TNTtoMiniMap::DrawRectMapToBuf (LPBYTE * RectPixelBitsBuf_PtrToPB, PTNTHe
 	return Buf_PB;
 }
 
-LPBYTE TNTtoMiniMap::PictureInfo ( LPBYTE * PixelBits_pp,  POINT * Aspect)
-{
-	return myMiniMap->PictureInfo ( PixelBits_pp, Aspect);
-}
+//void TNTtoMiniMap::PictureInfo ( LPBYTE * PixelBits_pp,  POINT * Aspect)
+//{
+//	return myMiniMap->PictureInfo ( PixelBits_pp, Aspect);
+//}
 ///////////-------------
 
 MiniMapPicture::MiniMapPicture (int Width_I, int Height_I)
@@ -204,12 +220,18 @@ MiniMapPicture::MiniMapPicture (int Width_I, int Height_I)
 }
 MiniMapPicture::~MiniMapPicture ()
 {
-	if (NULL!=MiniMapPixelBits)
-	free ( MiniMapPixelBits);
+	if (NULL != MiniMapPixelBits)
+	{
+		free(MiniMapPixelBits);
+		MiniMapPixelBits = 0;
+	}
 }
 
 LPBYTE MiniMapPicture::StretchTATNTDataToMiniMap (PTNTHeaderStruct TATNT_PTNTH)
-{
+{ // this one for map init
+
+
+
 	int MapDataPitch_I= TATNT_PTNTH->Width;
 	int MapDataWidth_I= MapDataPitch_I- 1;
 	int MapDataHeight_I= TATNT_PTNTH->Height- 4;
@@ -283,6 +305,26 @@ LPBYTE MiniMapPicture::StretchTATNTDataToMiniMap (PTNTHeaderStruct TATNT_PTNTH)
 			MiniMapPixelBits[MiniMapPixelYStart+ XPos]= MiniMapByte;
 		}
 	}
+
+
+	mmpbWidth = Width;
+	mmpbHeight = Height;
+
+
+	if (NewCopiedmmpb)
+	{
+		free(NewCopiedmmpb);
+
+		NewCopiedmmpb = 0;
+	}
+
+
+	//if (!NewCopiedmmpb)
+	//{
+	//	NewCopiedmmpb = (LPBYTE)malloc(mmpbWidth * mmpbHeight + 1);
+	//}
+
+
 	return MiniMapPixelBits;
 }
 
@@ -493,11 +535,18 @@ int MiniMapPicture::DrawMiniMap (LPBYTE DescPixelBitsBegin, RECT * DescRect, int
 
 LPBYTE MiniMapPicture::PictureInfo ( LPBYTE * PixelBits_pp,  POINT * Aspect)
 {
-	if (PixelBits_pp)
-	{
-		*PixelBits_pp= MiniMapPixelBits;
-	}
-	
+	//if (PixelBits_pp)
+	//{
+	//	if (*PixelBits_pp)
+	//		free(*PixelBits_pp);
+
+	//	*PixelBits_pp = (LPBYTE)malloc(Aspect->x * Aspect->y);
+
+	//	memcpy(*PixelBits_pp, MiniMapPixelBits, Aspect->x * Aspect->y);
+
+	//	//*PixelBits_pp= MiniMapPixelBits;
+	//}
+	//
 	if (Aspect)
 	{
 		Aspect->x= Width;

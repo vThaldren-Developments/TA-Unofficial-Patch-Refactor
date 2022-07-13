@@ -173,7 +173,7 @@ void CopyGafToBits (LPBYTE PixelBits, POINT * Aspect, unsigned int X, unsigned i
 	else
 	{
 		OffScreen.ScreenRect.left= 0;
-		OffScreen.ScreenRect.right=  Aspect->x;;
+		OffScreen.ScreenRect.right=  Aspect->x;
 
 		OffScreen.ScreenRect.top= 0;
 		OffScreen.ScreenRect.bottom= Aspect->y;

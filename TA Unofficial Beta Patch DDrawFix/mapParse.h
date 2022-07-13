@@ -38,7 +38,7 @@ public:
 	int DrawMiniMap (LPBYTE DescPixelBitsBegin, RECT * DescRect, int DescPixelWidth_I, int DescPixelHeight_I, RECT * MiniMapRect);
 	LPBYTE PictureInfo ( LPBYTE * PixelBits_pp,  POINT * Aspect);
 private:
-	LPBYTE MiniMapPixelBits;
+	
 	int Width;
 	int Height;
 	DWORD WholeBytesInPixelsBits;

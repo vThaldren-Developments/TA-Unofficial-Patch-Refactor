@@ -21,9 +21,18 @@ class MegamapTAStuff;
 struct tagInlineX86StackBuffer;
 typedef struct tagInlineX86StackBuffer * PInlineX86StackBuffer;
 
+
+
 class FullScreenMinimap
 {
 public:
+
+
+
+	DDSURFACEDESC lpDDSurfaceDesc;
+	int surfwidth;
+	int surfheight;
+
 
 
 	int megamapFps;
@@ -80,14 +89,35 @@ public:
 	void DischargeGUIState ( );
 	void BlockGUIState ( );
 
-	void UpdateFrame(LPDIRECTDRAWSURFACE DestSurf);// nah no para
+	void __stdcall UpdateFrame(LPVOID DestSurf, LPDDSURFACEDESC DestDesc);// nah no para
 
 	void RenderMouseCursor();
 	void GameDrawerFlip();
 
 
 
+	void writejmp(unsigned int injectp, unsigned int targetp)
+	{
+		DWORD Old;
+		if (VirtualProtect((LPVOID)injectp, 5, PAGE_EXECUTE_READWRITE, &Old))
+		{
+			__asm
+			{
+				mov edi, injectp
+				mov eax, targetp
+				sub eax, edi
+				sub eax, 5
+				mov byte ptr[edi], 0xE9
+				mov dword ptr[edi + 1], eax
+			}
+
+			VirtualProtect((LPVOID)injectp, 5, PAGE_EXECUTE_READ, &Old);
+		}
+	}
 	
+
+
+
 
 private:
 	InlineSingleHook * LoadMap_hook;

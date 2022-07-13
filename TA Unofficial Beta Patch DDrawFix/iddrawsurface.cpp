@@ -53,6 +53,21 @@ LPRGNDATA ScreenRegionShare;
 LPDIRECTDRAWCLIPPER lpDDClipperShare;
 
 
+
+
+LPDDSURFACEDESC lpFrontDescGlobal;
+LPVOID lpFrontSurfaceGlobal;
+int lastPitch = -1;
+
+
+
+extern bool megamapON;
+
+
+extern int LAYER;
+
+
+
 //#define XPOYDEBUG
 
 /*
@@ -127,6 +142,8 @@ IDDrawSurface::IDDrawSurface(LPDIRECTDRAW lpDD, LPDDSURFACEDESC lpTAddsc, LPDIRE
 // 	{
 // 		VerticalSync = true;
 // 	}
+
+	// fix later (remove these flags altogether)!!! - also where is that other override thingy i made? - mass code overhaul..
 	VidMem = MyConfig->GetIniBool("UseVideoMemory", TRUE);
 
 
@@ -166,9 +183,9 @@ IDDrawSurface::IDDrawSurface(LPDIRECTDRAW lpDD, LPDDSURFACEDESC lpTAddsc, LPDIRE
 	LocalShare->TADirectDrawFrontSurface = lpFront;
 
 
-	SettingsDialog = new Dialog(VidMem);
+	//SettingsDialog = new Dialog(VidMem);
 	WhiteBoard = new AlliesWhiteboard(VidMem);
-	Income = new CIncome(VidMem);
+	//Income = new CIncome(VidMem);
 	TAHook = new CTAHook(VidMem);
 	CommanderWarp = new CWarp(VidMem);
 	SharedRect = new CMapRect(VidMem);
@@ -186,7 +203,7 @@ IDDrawSurface::IDDrawSurface(LPDIRECTDRAW lpDD, LPDDSURFACEDESC lpTAddsc, LPDIRE
 
 
 	DataShare->IsRunning = 10;
-	SettingsDialog->SetAll();
+	//SettingsDialog->SetAll();
 
 #ifdef USEMEGAMAP
 	if (GUIExpander
@@ -250,16 +267,16 @@ ULONG __stdcall IDDrawSurface::Release()
 
 	delete WhiteBoard;
 	WhiteBoard = NULL;
-	delete Income;
-	Income = NULL;
+	//delete Income;
+	//Income = NULL;
 	delete TAHook;
 	TAHook = NULL;
 	delete CommanderWarp;
 	CommanderWarp = NULL;
 	delete SharedRect;
 	SharedRect = NULL;
-	delete SettingsDialog;
-	SettingsDialog = NULL;
+	//delete SettingsDialog;
+	//SettingsDialog = NULL;
 	delete ChangeQueue;
 	ChangeQueue = NULL;
 	delete DDDTA;
@@ -335,6 +352,9 @@ HRESULT __stdcall IDDrawSurface::GetAttachedSurface(LPDDSCAPS arg1, LPDIRECTDRAW
 {
 	OutptTxt("GetAttachedSurface");
 	HRESULT result = lpFront->GetAttachedSurface(arg1, arg2);
+
+	//memcpy(&onlySurfaceCaps, arg1, sizeof(DDSCAPS));
+
 
 	lpBack = *arg2;
 	LocalShare->TADirectDrawBackSurface = *arg2;
@@ -426,13 +446,18 @@ HRESULT __stdcall IDDrawSurface::Lock(LPRECT arg1, LPDDSURFACEDESC arg2, DWORD a
 	HRESULT result;
 	//if (Gb_TempEHA)
 	//{
-	//	result = lpFront->Lock(arg1, arg2, arg3, arg4);
+
+	// new (restored)
+	//result = lpFront->Lock(arg1, arg2, arg3, arg4);
 
 	//	return result;
 	//}
 
 	//result = lpBack->Lock ( arg1, arg2, arg3, arg4);
-	result = lpBack->Lock(arg1, arg2, arg3, arg4);
+	// 
+	// 
+	// original code
+	result = lpFront->Lock(arg1, arg2, arg3, arg4);
 
 
 	if (result == DD_OK)
@@ -440,13 +465,31 @@ HRESULT __stdcall IDDrawSurface::Lock(LPRECT arg1, LPDDSURFACEDESC arg2, DWORD a
 		lpBackLockOn = true;
 		TAHook->TABlit();
 		SurfaceMemory = arg2->lpSurface;
+
+
+		memcpy(&onlySurfaceDescFRONT, arg2, sizeof(DDSURFACEDESC));
+
+		lpFrontDescGlobal = arg2;
+		lpFrontSurfaceGlobal = arg2->lpSurface;
+
+
+		lastPitch = lpFrontDescGlobal->lPitch;
 	}
 	else
+	{
+		memset(&onlySurfaceDescFRONT, 0, sizeof(DDSURFACEDESC));
 		SurfaceMemory = NULL;
+	}
 
 	lPitch = arg2->lPitch;
 	dwHeight = arg2->dwHeight;
 	dwWidth = arg2->dwWidth;
+
+
+
+
+
+
 	return result;
 
 }
@@ -461,7 +504,7 @@ HRESULT __stdcall IDDrawSurface::Restore()
 {
 	OutptTxt("Restore");
 	((CDDDTA*)LocalShare->DDDTA)->FrameUpdate();
-	lpBack->Restore(); //
+	lpFront->Restore(); //
 
 	return lpFront->Restore();
 }
@@ -634,8 +677,24 @@ HRESULT __stdcall IDDrawSurface::SetPalette(LPDIRECTDRAWPALETTE arg1)
 //}
 
 // not fine, no flicker but game frames not being updated after tabbing in / out
+// ^^^^ old notes lol ^^^^
 HRESULT __stdcall IDDrawSurface::Unlock(LPVOID arg1)
 {
+
+
+	//if (GUIExpander->myMinimap->IsBliting()/* && LAYER > 0 */ )
+	//{
+	//	return lpFront->Unlock(arg1);
+	//	//GUIExpander->myMinimap->UpdateFrame(lpFront, &onlySurfaceDescFRONT); //front
+
+	//	
+	//}
+	//else if(GUIExpander->myMinimap->IsBliting())
+	//{
+		//LAYER++;
+	//}
+
+
 	//OutptTxt("Unlock");
 	HRESULT result;
 	UpdateTAProcess();
@@ -643,135 +702,174 @@ HRESULT __stdcall IDDrawSurface::Unlock(LPVOID arg1)
 	GameingState* GameingState_P = (*TAmainStruct_PtrPtr)->GameingState_Ptr;
 
 	//if (Gb_TempEHA)
-	//{
-	//	result = lpFront->Unlock(arg1);
-	//	return result;
+	{
+		//result = lpFront->Unlock(arg1);
+		//return result;
 	//}
 
 	//if (VerticalSync)
 	//{
-	if (PlayingMovie) //deinterlace and flip directly
-	{
-		if (!DisableDeInterlace)
+		if (PlayingMovie) //deinterlace and flip directly
 		{
-			DeInterlace();
-			result = lpBack->Unlock(arg1);
-
-			if (lpFront->Blt(NULL, lpBack, NULL, DDBLT_ASYNC, NULL) != DD_OK)
+			if (!DisableDeInterlace)
 			{
-				lpFront->Blt(NULL, lpBack, NULL, DDBLT_WAIT, NULL);
-				//OutptTxt("lpBack to lpFront Blit failed");
+				DeInterlace();
+				result = lpFront->Unlock(arg1);
+
+				//if (lpFront->Blt(NULL, lpFront, NULL, DDBLT_ASYNC, NULL) != DD_OK)
+				//{
+				//	lpFront->Blt(NULL, lpFront, NULL, DDBLT_WAIT, NULL);
+				//	//OutptTxt("lpBack to lpFront Blit failed");
+				//}
+				lpBackLockOn = false;
+				return result;
 			}
-			lpBackLockOn = false;
-			return result;
+			else
+				PlayingMovie = false;
+		}
+
+		if (DataShare->ehaOff == 1 && !DataShare->PlayingDemo) //disable everything
+		{//just unlock flip and return
+			lpDDClipper->SetClipList(ScreenRegion, 0);
+			//result = lpFront->Unlock(arg1);
+			//if (result != DD_OK)
+			//{
+				//lpBackLockOn = false;
+				//return result;
+			//}
 		}
 		else
-			PlayingMovie = false;
-	}
-
-	if (DataShare->ehaOff == 1 && !DataShare->PlayingDemo) //disable everything
-	{//just unlock flip and return
-		lpDDClipper->SetClipList(ScreenRegion, 0);
-		result = lpBack->Unlock(arg1);
-		if (result != DD_OK)
 		{
-			lpBackLockOn = false;
-			return result;
-		}
-	}
-	else
-	{
-		if (SurfaceMemory != NULL)
-		{
-			WhiteBoard->LockBlit((char*)SurfaceMemory, lPitch);
-
-			if (GameingState_P
-				&& (gameingstate::MULTI == GameingState_P->State))
+			if (SurfaceMemory != NULL)
 			{
-				SharedRect->LockBlit((char*)SurfaceMemory, lPitch);
-			}
+
+
+				if(!megamapON)
+					WhiteBoard->LockBlit((char*)SurfaceMemory, lPitch);
+
+
+
+
+				if (GameingState_P
+					&& (gameingstate::MULTI == GameingState_P->State))
+				{
+					SharedRect->LockBlit((char*)SurfaceMemory, lPitch);
+				}
 
 #ifdef USEMEGAMAP
-			if ((GUIExpander)
-				&& (GUIExpander->myMinimap))
-			{
-				GUIExpander->myMinimap->LockBlit((char*)SurfaceMemory, dwWidth, dwHeight, lPitch);
-			}
+				if ((GUIExpander)
+					&& (GUIExpander->myMinimap))
+				{
+					GUIExpander->myMinimap->LockBlit((char*)SurfaceMemory, dwWidth, dwHeight, lPitch);
+				}
 #endif
-		}
+			}
 
-		result = lpBack->Unlock(arg1);
-		if (result != DD_OK)
-		{
-			lpBackLockOn = false;
-			return result;
-		}
-
-
-
-		DDDTA->Blit(lpBack);
-
-		lpDDClipper->SetClipList(BattleFieldRegion, 0);
-		WhiteBoard->Blit(lpBack);
+			//result = lpFront->Unlock(arg1);
+			//if (result != DD_OK)
+			//{
+			//	lpBackLockOn = false;
+			//	return result;
+			//}
 
 
-		if (GameingState_P
-			&& (gameingstate::MULTI == GameingState_P->State))
-		{
-			CommanderWarp->Blit(lpBack);
-		}
 
+			DDDTA->Blit(lpFront);
+
+
+
+
+			lpDDClipper->SetClipList(BattleFieldRegion, 0);
+
+
+			if(!megamapON)
+				WhiteBoard->Blit(lpFront);
+
+
+
+
+			//if (!megamapON)
+			//{
+			//	if (GameingState_P
+			//		&& (gameingstate::MULTI == GameingState_P->State))
+			//	{
+			//		CommanderWarp->Blit(lpFront);
+			//	}
+			//}
 
 #ifdef USEMEGAMAP
 
-		//LPBYTE lpSurfaceMem = NULL;
+			//LPBYTE lpSurfaceMem = NULL;
 
-		if ((GUIExpander)
-			&& (GUIExpander->myMinimap))
-		{
 
-			//	IncomeStructureShare = Income;
-			//	ScreenRegionShare = ScreenRegion;
-			//	lpDDClipperShare = lpDDClipper;
-
-			if (GUIExpander->myMinimap->IsBliting())
-			{
-				GUIExpander->myMinimap->UpdateFrame(lpBack);
-			}
-		}
-		//else
-		//{
-			//lpDDClipper->SetClipList(ScreenRegion, 0);
-
-			//if (GameingState_P
-			//	&& (gameingstate::MULTI == GameingState_P->State))
+			//if ((GUIExpander)
+			//	&& (GUIExpander->myMinimap))
 			//{
-			//	Income->BlitIncome(lpBack);
+
+			//	//	IncomeStructureShare = Income;
+			//	//	ScreenRegionShare = ScreenRegion;
+			//	//	lpDDClipperShare = lpDDClipper;
+
+			//	if (GUIExpander->myMinimap->IsBliting())
+			//	{
+			//		//lpFront->Lock(NULL, &onlySurfaceDescFRONT, DDLOCK_WAIT, 0);
+
+			//		GUIExpander->myMinimap->UpdateFrame(lpFront, &onlySurfaceDescFRONT); //front
+
+			//		//lpFront->Unlock(arg1);
+
+			//		//LAYER = 0;
+			//	}
 			//}
-		//}
+			//else
+			//{
+				//lpDDClipper->SetClipList(ScreenRegion, 0);
+
+				//if (GameingState_P
+				//	&& (gameingstate::MULTI == GameingState_P->State))
+				//{
+				//	Income->BlitIncome(lpBack);
+				//}
+			//}
 #endif	
 //#else
 
 
-		lpDDClipper->SetClipList(ScreenRegion, 0);
+			lpDDClipper->SetClipList(ScreenRegion, 0);
 
-		if (GameingState_P
-			&& (gameingstate::MULTI == GameingState_P->State))
-		{
-			Income->BlitIncome(lpBack);
-		}
+			//if (GameingState_P
+			//	&& (gameingstate::MULTI == GameingState_P->State))
+			//{
 
-		//#endif
 
-		//#ifdef USEMEGAMAP
-		//			if ((GUIExpander)
-		//				&& (GUIExpander->myMinimap))
-		//			{
-		//				GUIExpander->myMinimap->RenderMouseCursor();
-		//				GUIExpander->myMinimap->GameDrawerFlip();
-		//			}
-		//#endif
-		//
+			//LPBYTE pushvar;
+
+
+			//__asm
+			//{
+			//	mov eax, dword ptr ds:[0x0051FBD0]
+			//	mov eax, [eax + 0xBC]
+			//	mov eax, [eax + 0xC]
+			//	mov pushvar, eax
+			//}
+
+
+			//Income->BlitIncome(pushvar);
+			
+			
+			//}
+
+			//#endif
+
+			//#ifdef USEMEGAMAP
+			//			if ((GUIExpander)
+			//				&& (GUIExpander->myMinimap))
+			//			{
+			//				GUIExpander->myMinimap->RenderMouseCursor();
+			//				GUIExpander->myMinimap->GameDrawerFlip();
+			//			}
+			//#endif
+			//
 
 
 
@@ -803,27 +901,77 @@ HRESULT __stdcall IDDrawSurface::Unlock(LPVOID arg1)
 
 
 
+			// disabling settings dialog
+			// going to file system instead
+			// fact of the matter is im lazy
 
-		SettingsDialog->BlitDialog(lpBack);
+
+			//LPBYTE pushvar;
+
+
+			//__asm
+			//{
+			//	mov eax, dword ptr ds:[0x0051FBD0]
+			//	mov eax, [eax + 0xBC]
+			//	mov eax, [eax + 0xC]
+			//	mov pushvar, eax
+			//}
+
+			//SettingsDialog->BlitDialog(pushvar);
 
 
 
 
-		//////////////////////////////////////////////////////////////////////////
-		//unicode
-		if (NULL != NowSupportUnicode)
-		{
-			NowSupportUnicode->Blt(lpBack);
+			//////////////////////////////////////////////////////////////////////////
+			//unicode
+			if (NULL != NowSupportUnicode)
+			{
+				NowSupportUnicode->Blt(lpFront);
+			}
+
+
+			/*
+			if (lpFront->Blt(NULL, lpBack, NULL, DDBLT_ASYNC, NULL) != DD_OK)
+			{
+				lpFront->Blt(NULL, lpBack, NULL, DDBLT_WAIT, NULL);
+				//OutptTxt("lpBack to lpFront Blit failed");
+			}
+			*/
+
+
+			//DDSURFACEDESC surfacedata1;
+			//DDSURFACEDESC surfacedata2;
+
+
+			//if (lpFront->Lock(NULL, &onlySurfaceDescFRONT, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, NULL) == DD_OK)
+			//{
+			//	//if (lpBack->Lock(NULL, &surfacedata2, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, NULL) == DD_OK)
+			//	//{
+			//	memcpy(onlySurfaceDescFRONT.lpSurface, onlySurfaceDescBACK.lpSurface, onlySurfaceDescBACK.dwWidth * onlySurfaceDescBACK.dwHeight);
+
+
+				//}
+
+				
+			//}
+
+
+
+
+
+
+
+			//result = lpFront->Unlock(NULL);
 		}
 
-		if (lpFront->Blt(NULL, lpBack, NULL, DDBLT_ASYNC, NULL) != DD_OK)
-		{
-			lpFront->Blt(NULL, lpBack, NULL, DDBLT_WAIT, NULL);
-			//OutptTxt("lpBack to lpFront Blit failed");
-		}
+		lpFront->Unlock(arg1);
+
+		//lpFront->Unlock(arg1);
+
+
+		lpBackLockOn = false;
+		return result;
 	}
-	lpBackLockOn = false;
-	return result;
 }
 //else
 //{
@@ -1054,7 +1202,7 @@ void IDDrawSurface::CreateClipplist()
 {
 	//IDDrawSurface::OutptTxt ( "CreateClipplist");
 	LPDIRECTDRAW TADD = (IDirectDraw*)LocalShare->TADirectDraw;
-	if (lpBack)
+	if (lpFront)
 	{
 		if (lpDDClipper)
 		{
@@ -1088,7 +1236,7 @@ void IDDrawSurface::CreateClipplist()
 		BattleFieldRegion->rdh.rcBound.bottom = ScreenHeight - 32;
 
 
-		lpBack->SetClipper(lpDDClipper);
+		lpFront->SetClipper(lpDDClipper);
 	}
 }
 
@@ -1118,11 +1266,11 @@ void IDDrawSurface::ScreenShot()
 		//Sleep ( 1);
 	//}
 
-	PCX PCXScreen;
+	PCX PCXScreen = PCX();
 
 	DDSURFACEDESC ddsd;
 	DDRAW_INIT_STRUCT(ddsd);
-	if (lpBack->Lock(NULL, &ddsd, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, NULL) == DD_OK)
+	if (lpFront->Lock(NULL, &ddsd, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, NULL) == DD_OK)
 	{
 		char* Buff = new char[LocalShare->ScreenWidth * LocalShare->ScreenHeight];
 		for (int j = 0; j < LocalShare->ScreenHeight; j++)
@@ -1139,9 +1287,12 @@ void IDDrawSurface::ScreenShot()
 		//OutptTxt("error writing screenshot");
 
 
-		PCXScreen.SetBuffer(NULL);
-		delete Buff;
-		lpBack->Unlock(NULL);
+		//PCXScreen.SetBuffer(NULL);
+		
+		lpFront->Unlock(NULL);
+
+		//delete Buff;
+
 	}
 
 
@@ -1277,11 +1428,12 @@ LRESULT CALLBACK WinProc(HWND WinProcWnd, UINT Msg, WPARAM wParam, LPARAM lParam
 		//	if()
 		//}
 
-
+		
 
 
 		if (Msg == WM_KEYDOWN)
 		{
+
 			if (wParam == VK_F12)
 			{
 
@@ -1305,6 +1457,7 @@ LRESULT CALLBACK WinProc(HWND WinProcWnd, UINT Msg, WPARAM wParam, LPARAM lParam
 				//CallInternalCommandHandler("gamma 10", 1);
 			}
 
+			/*
 			// perm los
 			if (wParam == VK_F9)
 			{
@@ -1316,6 +1469,9 @@ LRESULT CALLBACK WinProc(HWND WinProcWnd, UINT Msg, WPARAM wParam, LPARAM lParam
 			//{
 			//	InTab = true;
 			//}
+
+
+			*/
 		}
 
 		//if (Msg == WM_LBUTTONDOWN || Msg == WM_RBUTTONDOWN)
@@ -1401,34 +1557,34 @@ LRESULT CALLBACK WinProc(HWND WinProcWnd, UINT Msg, WPARAM wParam, LPARAM lParam
 		{
 			return 0;
 		}
-		//if((Msg == WM_KEYUP)||(WM_KEYDOWN==Msg))
-		//{
-			//if(((wParam == 0x78 && (GetAsyncKeyState ( 17) &0x8000)>0) ) // F9 + Ctrl
-			//	|| wParam == VK_SNAPSHOT)
-			//{
-			//	if (Msg == WM_KEYUP)
-			//	{
-			//		((IDDrawSurface*)LocalShare->DDrawSurfClass)->ScreenShot();
-			//	}
+		if((Msg == WM_KEYUP)||(WM_KEYDOWN==Msg))
+		{
+			if(((wParam == 0x78 && (GetAsyncKeyState ( 17) &0x8000)>0) ) // F9 + Ctrl
+				|| wParam == VK_SNAPSHOT)
+			{
+				if (Msg == WM_KEYUP)
+				{
+					((IDDrawSurface*)LocalShare->DDrawSurfClass)->ScreenShot();
+				}
 
-			//	return 0;
-			//}
-		//}
+				return 0;
+			}
+		}
 		//////////////////////////////////////////////////////////////////////////
 
 		if ((NULL != LocalShare->Whiteboard)
 			&& (((AlliesWhiteboard*)LocalShare->Whiteboard)->Message(WinProcWnd, Msg, wParam, lParam)))
 			return 0;
 
-		if ((NULL != LocalShare->Income)
-			&& (((CIncome*)LocalShare->Income)->Message(WinProcWnd, Msg, wParam, lParam)))
-			return 0;  //message handled by the income class
+		//if ((NULL != LocalShare->Income)
+		//	&& (((CIncome*)LocalShare->Income)->Message(WinProcWnd, Msg, wParam, lParam)))
+		//	return 0;  //message handled by the income class
 
-		if (NULL != (LocalShare->Dialog))
-		{
-			if (((Dialog*)LocalShare->Dialog)->Message(WinProcWnd, Msg, wParam, lParam))
-				return 0;  //message handled by the dialog
-		}
+		//if (NULL != (LocalShare->Dialog))
+		//{
+		//	if (((Dialog*)LocalShare->Dialog)->Message(WinProcWnd, Msg, wParam, lParam))
+		//		return 0;  //message handled by the dialog
+		//}
 
 
 		if ((LocalShare->CommanderWarp)

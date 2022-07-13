@@ -7,6 +7,7 @@
 #include "oddraw.h"
 
 
+
 #include "hook/hook.h"
 #include "hook/etc.h"
 #include "tamem.h"
@@ -34,9 +35,202 @@ using namespace std;
 #include "TAConfig.h"
 
 
+//#include "newglobals.h"
+
 #ifdef USEMEGAMAP
 
 
+LPBYTE MiniMapPixelBits; // real map picture - copy from this!!
+
+LPBYTE savedMEGAMAPsurface;
+
+LPBYTE NewCopiedmmpb;
+int mmpbWidth;
+int mmpbHeight;
+
+extern LPBYTE MappedBits;
+
+
+LPBYTE TAStuff_Surfc;
+
+int width;
+int height;
+
+
+bool megamapON;
+DWORD nextMEGAtickcount;
+DWORD nextMEGAtickcountDRAWBOX;
+
+
+
+
+LPBYTE FinalRenderForKeyframe;
+
+
+
+//
+//extern LPBYTE MiniMapPixelBits;
+//extern LPBYTE NewCopiedmmpb;
+//extern int mmpbWidth;
+//extern int mmpbHeight;
+//
+//
+//
+//extern LPBYTE MappedBits;
+//extern int Width_mapped;
+//extern int Height_mapped;
+//
+//
+//
+//extern LPBYTE UnitsMapSfc;
+//extern int surfwidthunits;
+//extern int surfheightunits;
+
+
+extern int LAYER;
+
+
+extern LPDDSURFACEDESC lpFrontDescGlobal;
+extern LPVOID lpFrontSurfaceGlobal;
+LPVOID ThisClass;
+extern int lastPitch;
+
+
+
+
+
+
+
+MappedMap* Mapped_p_Global;
+ProjectileMap* ProjectilesMap_p_Global;
+UnitsMinimap* UnitsMap_Global;
+MegamapTAStuff* TAStuff_Global;
+MegaMapControl* MegamapControls_Global;
+TAGameAreaReDrawer* GameDrawer_Global;
+
+
+
+bool mutexlock;
+bool gamehasticked;
+bool hasframeupdated;
+
+bool firsttime = true;
+
+
+__declspec(naked) void IfRenderMegaThenBlock()
+{
+	__asm
+	{
+		mov al, byte ptr [megamapON]
+		test al, al
+		jz dontskip
+
+
+		push lpFrontDescGlobal
+
+		mov eax, dword ptr ds:[0x0051FBD0]
+		mov eax, [eax+0xBC]
+		mov eax, [eax+0xC]
+
+		push eax
+		push ThisClass
+		call FullScreenMinimap::UpdateFrame
+		
+
+
+		//skip:
+		mov eax, 0x00469F23
+		jmp eax
+
+		dontskip:
+		mov ecx, dword ptr ds:[0x511de8]
+		mov eax, 0x0046962A
+		jmp eax
+	}
+}
+
+
+
+
+__declspec(naked) void IfRenderMegaThenBlock2()
+{
+	__asm
+	{
+		mov al, byte ptr [megamapON]
+		test al, al
+		jz dontskip
+
+		//skip:
+		add esp, 4
+
+
+
+
+
+		mov eax, 0x00468E35
+		jmp eax
+
+
+		dontskip:
+		mov eax, 0x00483FA0
+		call eax
+
+
+		mov eax, 0x00468DB5
+		jmp eax
+	}
+}
+
+
+
+
+
+
+__declspec(naked) void gametimeupdate()
+{
+	__asm
+	{
+		mov ecx, [eax+0x38a47]
+
+		cmp byte ptr [mutexlock], 1
+		je locked
+		mov byte ptr [gamehasticked], 1
+		locked:
+
+		push 0x004954BD
+		ret
+	}
+}
+
+
+
+
+//__declspec(naked) void IfRenderThenDrawTopGUI()
+//{
+//	__asm
+//	{
+//		mov al, byte ptr [megamapON]
+//		test al, al
+//		jz dontskip
+//
+//		//skip:
+//		add esp, 4
+//
+//		mov eax, 0x00468E35
+//		jmp eax
+//
+//
+//		dontskip:
+//		mov eax, 0x00483FA0
+//		call eax
+//
+//
+//		mov eax, 0x00468DB5
+//		jmp eax}
+//
+//}
+//
+//
 
 
 
@@ -45,6 +239,14 @@ extern CIncome* IncomeStructureShare;
 extern LPRGNDATA ScreenRegionShare;
 extern LPDIRECTDRAWCLIPPER lpDDClipperShare;
 
+
+
+DWORD WINAPI MegamapFrameThd(
+	
+);
+
+
+
 int __stdcall LoadMap_Routine (PInlineX86StackBuffer X86StrackBuffer)
 {
 	TNTHeaderStruct * TNTPtr= (TNTHeaderStruct *)X86StrackBuffer->Eax;
@@ -52,6 +254,9 @@ int __stdcall LoadMap_Routine (PInlineX86StackBuffer X86StrackBuffer)
 
 	
 	thethis->InitMinimap ( TNTPtr);
+
+
+
 	return 0;
 }
 
@@ -60,9 +265,10 @@ int triggerTime;
 int trigger;
 
 DWORD WINAPI MegamapFrameThd(
-	LPVOID megamapPtr
+	
 )
 {
+
 	//FullScreenMinimap * cls_p = static_cast<FullScreenMinimap *>(megamapPtr);
 
 	//do 
@@ -80,6 +286,121 @@ DWORD WINAPI MegamapFrameThd(
 	//	//Sleep ( 1000/ cls_p->megamapFps);
 
 	//} while (cls_p->Working_B);
+
+	POINT Aspect;
+	bool localgamehasticked;
+	bool boolhasframeupdated;
+	bool localmegamapON;
+
+	do
+	{
+		if (gameingstate::EXITGAME == (*TAmainStruct_PtrPtr)->GameStateMask)
+		{
+			return TRUE;
+		}
+
+
+		// stupid vs2022 compiler optimizer problems makes this not really happen
+		localgamehasticked = gamehasticked;
+		boolhasframeupdated = hasframeupdated;
+		localmegamapON = megamapON;
+
+		//if (firsttime == true)
+		//{
+		//	firsttime = false;
+		//	goto firsttimelabel;
+		//}
+
+
+		if ((localgamehasticked == true && boolhasframeupdated == true && localmegamapON == true) || firsttime == true)
+		{ // run megamap picture update
+			//firsttimelabel:
+			firsttime = false;
+
+			// fix this crap later lol
+			//RECT in;
+			//in.left = 0;
+			//in.right = Aspect.x;
+			//in.top = 0;
+			//in.bottom = Aspect.y;
+
+			//RECT in2;
+			//in2.left = 0;
+			//in2.right = in.right;
+			//in2.top = 0;
+			//in2.bottom = in.bottom;
+
+
+
+			//surfwidth = in2.right - in2.left;
+			//surfheight = in2.bottom - in2.top;
+
+
+			if (!NewCopiedmmpb || !savedMEGAMAPsurface)
+			{
+
+
+
+				NewCopiedmmpb = (LPBYTE)malloc(mmpbWidth * mmpbHeight + 1);
+				savedMEGAMAPsurface = (LPBYTE)malloc(mmpbWidth * mmpbHeight + 1);
+
+
+			}
+
+
+
+ 			memcpy(NewCopiedmmpb, MiniMapPixelBits, mmpbWidth * mmpbHeight);
+
+
+			Aspect.x = mmpbWidth;
+			Aspect.y = mmpbHeight;
+
+
+			Mapped_p_Global->NowDrawMapped(NewCopiedmmpb, &Aspect);
+
+
+
+			NewCopiedmmpb = MappedBits;
+
+
+			ProjectilesMap_p_Global->NowDrawProjectile(NewCopiedmmpb, &Aspect);
+
+			UnitsMap_Global->NowDrawUnits(NewCopiedmmpb, &Aspect);
+
+
+			if (savedMEGAMAPsurface && NewCopiedmmpb && (firsttime || hasframeupdated) /* && TAStuff->GetTAStuffSurface()*/)
+				memcpy(savedMEGAMAPsurface, NewCopiedmmpb, mmpbWidth * mmpbHeight);
+
+
+
+			mutexlock = true;
+			gamehasticked = false;
+			hasframeupdated = false;
+			mutexlock = false;
+		}
+		else
+		{
+			Sleep((int)(1000.0 / 30));
+		}
+
+
+
+
+
+
+		//UpdateTAProcess();
+	} while (true);
+
+
+
+
+
+
+
+
+
+
+
 
 	return TRUE;
 }
@@ -103,7 +424,11 @@ FullScreenMinimap::FullScreenMinimap (BOOL Doit, int FPSlimit)
 
 	MegamapVirtualKey= VK_TAB;
 
+	savedMEGAMAPsurface = 0;
+
 	Blit_b= FALSE;
+	megamapON = false;
+
 	Flipping= FALSE;
 
 	
@@ -133,7 +458,10 @@ FullScreenMinimap::FullScreenMinimap (BOOL Doit, int FPSlimit)
 	MaxIconHeight= ICONMAXHEIGHT;
 
 
-
+	surfwidth = -1;
+	surfheight = -1;
+	nextMEGAtickcount = 0;
+	LAYER = 0;
 	
 
 	memset ( &MegamapRect, 0, sizeof(RECT) );
@@ -145,6 +473,7 @@ FullScreenMinimap::FullScreenMinimap (BOOL Doit, int FPSlimit)
 
 	Do_b= Doit;
 
+
 	//megamapFps = FPSlimit;
 	if (Doit)
 	{
@@ -153,33 +482,61 @@ FullScreenMinimap::FullScreenMinimap (BOOL Doit, int FPSlimit)
 		LoadMap_hook->SetParamOfHook ( (LPVOID)this);
 		GameDrawer= new TAGameAreaReDrawer;
 		
+
+		DWORD junk;
+
+		// fix dumb mouse lag set by Cavedog?!?!?!?? in MouseThread
+		if (VirtualProtect((LPVOID)0x004C29C5, 3, PAGE_EXECUTE_READWRITE, &junk))
+		{
+			memset((void*)0x004C29C5, 0x90, 3);
+
+			VirtualProtect((LPVOID)0x004C29C5, 3, PAGE_EXECUTE_READ, &junk);
+		}
+
+
+		if (VirtualProtect((LPVOID)0x004954B7, 5, PAGE_EXECUTE_READWRITE, &junk))
+		{
+			writejmp(0x004954B7, (unsigned int)gametimeupdate);
+
+			VirtualProtect((LPVOID)0x004954B7, 5, PAGE_EXECUTE_READ, &junk);
+		}
+
+
+
+
 	}
 
-	Working_B = TRUE;// work!!
+	//Working_B = TRUE;// work!! <-- ok xpoy xD
 
 
 
 	
-	DrawTAScreen_hok= new InlineSingleHook ( (unsigned int)DrawGameScreen_Addr, 5, 
-		INLINE_5BYTESLAGGERJMP, BlockTADraw);
+	 //DrawTAScreen_hok= new InlineSingleHook ( (unsigned int)DrawGameScreen_Addr, 5, 
+		//INLINE_5BYTESLAGGERJMP, BlockTADraw);
 
-	DrawTAScreen_hok->SetParamOfHook ( reinterpret_cast<LPVOID>(this));
+	//DrawTAScreen_hok->SetParamOfHook ( reinterpret_cast<LPVOID>(this));
 
 
-	DrawTAScreenBlit_hok= new InlineSingleHook ( (unsigned int)DrawTAScreenBlitAddr, 5, 
-		INLINE_5BYTESLAGGERJMP, ForceTADrawBlit);
+	writejmp(0x00469624, (unsigned int)IfRenderMegaThenBlock);
+	writejmp(0x00468DB0, (unsigned int)IfRenderMegaThenBlock2);
 
-	DrawTAScreenBlit_hok->SetParamOfHook ( reinterpret_cast<LPVOID>(this));
+	 
+	//DrawTAScreenBlit_hok= new InlineSingleHook ( (unsigned int)DrawTAScreenBlitAddr, 5, 
+	//	INLINE_5BYTESLAGGERJMP, ForceTADrawBlit);
+
+	//DrawTAScreenBlit_hok->SetParamOfHook ( reinterpret_cast<LPVOID>(this));
 
 
 	
 
-	DrawTAScreenEnd_hok= new InlineSingleHook ( (unsigned int)DrawGameScreenEnd_Addr, 5, 
-		INLINE_5BYTESLAGGERJMP, DischargeTADraw);
+	//DrawTAScreenEnd_hok= new InlineSingleHook ( (unsigned int)DrawGameScreenEnd_Addr, 5, 
+		//INLINE_5BYTESLAGGERJMP, DischargeTADraw);
 
-	DrawTAScreenEnd_hok->SetParamOfHook ( reinterpret_cast<LPVOID>(this));
+	//DrawTAScreenEnd_hok->SetParamOfHook ( reinterpret_cast<LPVOID>(this));
+	
 	//create thread in here
-	//worker_thd= CreateThread ( NULL, 0, MegamapFrameThd, this, 0, &worker_tID);
+	//worker_thd= 
+	
 	//IDDrawSurface::OutptTxt ( "Megamap Inited!");
 
 
@@ -402,12 +759,19 @@ void FullScreenMinimap::InitMinimap (TNTHeaderStruct * TNTPtr, RECT * GameScreen
 		}
 		Mapped_p= new MappedMap ( MinimapAspect.x, MinimapAspect.y);
 
+		//RECT mmpbRECT;
+		//mmpbRECT.left = MegaMapInscren.left;
+		//mmpbRECT.top = 0;// MegaMapInscren.top;
+		//mmpbRECT.right = mmpbRECT.left + mmpbWidth;
+		//mmpbRECT.bottom = mmpbRECT.left + mmpbHeight;
+
 		if (NULL!=Controler)
 		{
 			Controler->Init ( this, &MegaMapInscren, &TAMAPTAPos, GameScreen, MaxIconWidth, MaxIconHeight, MegamapVirtualKey, WheelMoveMegaMap, DoubleClickMoveMegamap, WheelZoom);
 		}
 		else
 		{
+			// arg2 - &MegaMapInscren
 			Controler= new MegaMapControl ( this, &MegaMapInscren, &TAMAPTAPos, GameScreen, MaxIconWidth, MaxIconHeight, MegamapVirtualKey, WheelMoveMegaMap, DoubleClickMoveMegamap, WheelZoom);
 		}
 
@@ -433,6 +797,24 @@ void FullScreenMinimap::InitMinimap (TNTHeaderStruct * TNTPtr, RECT * GameScreen
 		InitSurface ( (IDirectDraw*)LocalShare->TADirectDraw);
 
 
+
+
+
+		Mapped_p_Global = Mapped_p;
+		ProjectilesMap_p_Global = ProjectilesMap_p;
+		UnitsMap_Global = UnitsMap;
+		TAStuff_Global = TAStuff;
+		MegamapControls_Global = Controler;
+		GameDrawer_Global = GameDrawer;
+
+
+
+
+
+
+
+
+
 		//IDDrawSurface::OutptTxt("Megamap TNT loaded!");
 	}
 }
@@ -452,177 +834,496 @@ void FullScreenMinimap::SetVid (BOOL VidMem_a)
 	VidMem= VidMem_a;
 }
 
-void FullScreenMinimap::UpdateFrame(LPDIRECTDRAWSURFACE DestSurf)
+void __stdcall FullScreenMinimap::UpdateFrame(LPVOID DestSurf, LPDDSURFACEDESC DestDesc)
 {
+	if (firsttime)
+	{
+		DWORD threadid;
+		HANDLE handle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)MegamapFrameThd, 0, 0, &threadid);
+	}
 
+	if (lastPitch == -1)
+		return;
 
-	
-	DDSURFACEDESC lpDDSurfaceDesc;
-
-	if (Do_b 
-		&&Blit_b
+	if (Do_b
+		&& Blit_b
 		&& !Flipping
 		)
 	{
+		bool respectPitch = false;
+
+
+		if (lastPitch != (*TAmainStruct_PtrPtr)->ScreenWidth)
+		{
+			respectPitch = true;
+		}
+
+
+
+
 		Flipping = TRUE;
 
 		if (gameingstate::EXITGAME == (*TAmainStruct_PtrPtr)->GameStateMask)
 		{
+			megamapON = false;
+			Flipping = FALSE;
 			return;
 		}
 
-		if (TAInGame == DataShare->TAProgress)
-		{
-			//IDDrawSurface::OutptTxt ( "FullScreenMinimap blit");
+		//if (TAInGame == DataShare->TAProgress)
+		//{
+		//	//IDDrawSurface::OutptTxt ( "FullScreenMinimap blit");
 
-			if (DrawMegamapBlit)
+		//	if (DrawMegamapBlit)
+		//	{
+		//		//IDDrawSurface::OutptTxt("Megamap Blit !");
+
+		//		
+
+
+			//GameDrawer->BlitTAGameArea(DestSurf);
+		//	}
+
+		//	//if (DrawMegamapCursor)
+		//	//{
+		//	//	// 				DDSURFACEDESC ddsd;
+		//	//	// 				DDRAW_INIT_STRUCT(ddsd);
+
+		//	//	if (UseSurfaceCursor)
+		//	//	{
+		//	//		BlitSurfaceCursor(DestSurf);
+		//	//	}
+		//	//}
+		//}		
+
+
+		//RECT in;
+
+
+		static POINT Aspect;
+		//LPBYTE PixelBits;
+
+		if (MyMinimap_p
+			&& UnitsMap)
+		{
+			//do
+			//{
+				//__try
+				//{
+			UpdateTAProcess();
+			//IDDrawSurface::OutptTxt("Megamap Start Update Frame!");
+			if (TAInGame != DataShare->TAProgress)
 			{
-				//IDDrawSurface::OutptTxt("Megamap Blit !");
+				Flipping = FALSE;
+				return;
+			}
+
+			//if (Blit_b)
+			//{
+			//DWORD TickCount = GetTickCount();
+
+
+
+
+/*
+			if (TickCount >= nextMEGAtickcount)
+			{
+
+				//if (FinalRenderForKeyframe)
+				//{
+				//	free(FinalRenderForKeyframe);
+				//	FinalRenderForKeyframe = 0;
+
+				//	FinalRenderForKeyframe = (LPBYTE)malloc(mmpbWidth * mmpbHeight + 1);
+				//}
+
 
 				
 
 
-				GameDrawer->BlitTAGameArea(DestSurf);
+				//}
+
+				//if (DrawMegamapCursor
+				//	&& !UseSurfaceCursor)
+				//{
+				//	//						RECT lpDestRect;
+
+				//							//IDDrawSurface::OutptTxt("Megamap Draw Cursor Frame!");
+				//							//DDSURFACEDESC lpDDSurfaceDesc;
+
+				//	//DDRAW_INIT_STRUCT(lpDDSurfaceDesc);
+
+
+				//		//GameDrawer->Lock(NULL, &lpDDSurfaceDesc, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, 0);
+
+				//		
+				//		LPRECT const gameRect = GameDrawer->TAWGameAreaRect(NULL);
+
+				//		int CursorX = Controler->PubCursorX - gameRect->left;
+				//		int CursorY = Controler->PubCursorY - gameRect->top;
+
+				//		//GameingState* GameingState_P = (*TAmainStruct_PtrPtr)->GameingState_Ptr;
+
+				//		//lpDDClipperShare->SetClipList(ScreenRegionShare, 0);
+
+				//		//if (GameingState_P
+				//		//	&& (gameingstate::MULTI == (*TAmainStruct_PtrPtr)->GameStateMask))
+				//		//{
+				//		//	IncomeStructureShare->BlitIncome((LPDIRECTDRAWSURFACE)lpDDSurfaceDesc.lpSurface);
+				//		//}
+
+
+
+				//		// this cursor stuff really is not needed i dont think - just a matter of a hook
+				//		if ((CursorY != -1)
+				//			&& (CursorX != -1)
+				//			&& (CursorX < gameRect->right)
+				//			&& (CursorY < gameRect->bottom))
+				//		{
+				//			if (Controler == NULL || (!Controler->IsDrawRect(TRUE)))
+				//			{
+				//				TAStuff->DrawCursor(lpDDSurfaceDesc.lpSurface, lpDDSurfaceDesc.dwWidth, lpDDSurfaceDesc.dwHeight, lpDDSurfaceDesc.lPitch,
+				//					CursorX, CursorY);
+				//			}
+				//		}
+
+				//		//RECT gameArea;
+				//		//GameDrawer->TAWGameAreaRect(&gameArea);
+				//		//size_t height = gameArea.bottom - gameArea.top;
+
+				//		// line by line
+				//		
+				//	//}
+
+				//	//GameDrawer->Unlock(lpDDSurfaceDesc.lpSurface);
+				//}
+
+
+				// copy picture info from parsed map
+
+
+				memcpy(NewCopiedmmpb, MiniMapPixelBits, mmpbWidth * mmpbHeight);
+
+
+				Aspect.x = mmpbWidth;
+				Aspect.y = mmpbHeight;
+				//if (DrawBackground)
+				//{
+			// get picture info after copy
+					//MyMinimap_p->PictureInfo(NULL, &Aspect);
+				//}
+
+				Mapped_p_Global->NowDrawMapped(NewCopiedmmpb, &Aspect);
+
+
+				//if (DrawMapped)
+				//{
+					//if (!Mapped_p->NowDrawMapped(PixelBits, &Aspect))
+					//{
+						//Flipping = FALSE;
+						//return;
+					//}
+
+				//}
+
+					// set new ptr
+				NewCopiedmmpb = MappedBits;
+
+
+				//Mapped_p->PictureInfo(&PixelBits, &Aspect);
+
+
+				//if (DrawProjectile)
+				//{
+					//IDDrawSurface::OutptTxt("Megamap Projectile Frame!");
+				ProjectilesMap_p_Global->NowDrawProjectile(NewCopiedmmpb, &Aspect);
+				//}
+
+				//if (DrawUnits)
+				//{
+					//IDDrawSurface::OutptTxt("Megamap Units Frame!");
+				UnitsMap_Global->NowDrawUnits(NewCopiedmmpb, &Aspect);
+				//}
+
+
+
+
+#define TimesPerSecond 30 // only 30 engine ticks per second
+				nextMEGAtickcount = TickCount + (int)(1000.f / TimesPerSecond); // times per second
+
+
+
+			}
+*/
+
+
+			//RECT in;
+			//in.left = 0;
+			//in.right = Aspect.x;
+			//in.top = 0;
+			//in.bottom = Aspect.y;
+
+			//if (DrawMegamapRect)
+			//{
+
+
+				//if (DrawUnits)
+				//{
+					//IDDrawSurface::OutptTxt("Megamap Rect Frame!");
+
+
+
+					//GameDrawer->MixDSufInBlit(TAStuff->GetTAStuffSurface(), &MegamapRect, UnitsMap->GetSurface(), &in);
+				//}
+				//else
+				// 
+				// 
+				// 
+				//{
+
+
+
+
+
+
+					//for (int y = 0; y < Aspect.y; y++)
+					//{
+					//	memcpy((void*)((DWORD)TAStuff_Surfc + y * Aspect.x), (void*)((DWORD)UnitsMap->GetSurface() + y * Aspect.x), Aspect.x);
+					//}
+
+					//GameDrawer->MixBitsInBlit(&MegamapRect, PixelBits, &Aspect, &in);
+				//}
+			//}
+
+
+
+
+
+			//IDDrawSurface::OutptTxt("Megamap TAStuff Frame!");
+			//RECT in2;
+			//in2.left = 0;
+			//in2.right = in.right;
+			//in2.top = 0;
+			//in2.bottom = in.bottom;
+
+			//TAStuff->BlitTAGameStuff(GameDrawer->backSurface_p(), &in2);
+
+			//const RECT rectangle = in2;
+
+			//GameDrawer->TAWGameAreaRect(&rectangle);
+			//DDRAW_INIT_STRUCT(lpDDSurfaceDesc);
+			////GameDrawer->Lock(NULL, &lpDDSurfaceDesc, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, 0);
+			//if (surfwidth == -1 && surfheight == -1)
+			//{
+			//surfwidth = in2.right - in2.left;
+			//surfheight = in2.bottom - in2.top;
+			//}
+
+
+
+
+
+
+
+			//GameDrawer->Unlock(lpDDSurfaceDesc.lpSurface);
+
+
+
+
+			// needed?
+
+			//GameDrawer->Flip();
+
+
+
+
+
+
+
+
+			// black background
+
+
+
+
+
+
+
+
+
+
+
+
+
+			if (DestDesc->lpSurface && savedMEGAMAPsurface/* && DestDesc->lpSurface*/)
+			{
+
+				// black background
+
+				int top = 32;
+				int left = 128;
+				int bottom = (*TAmainStruct_PtrPtr)->ScreenHeight - top - 32;
+
+				if (respectPitch)
+				{
+
+					for (int y = 0; y < bottom; y++)
+					{
+						memset((void*)((LPBYTE)DestSurf + ((y + top) * (*TAmainStruct_PtrPtr)->ScreenWidth) + left), 0x00, ((*TAmainStruct_PtrPtr)->GameScreenWidth));
+					}
+				}
+				else
+				{
+					for (int y = 0; y < bottom; y++)
+					{
+						memset((void*)((LPBYTE)DestSurf + ((y + top) * (*TAmainStruct_PtrPtr)->ScreenWidth) + left), 0x00, ((*TAmainStruct_PtrPtr)->GameScreenWidth));
+					}
+				}
+
+
+
+
+
+
+				Aspect.x = mmpbWidth;
+				Aspect.y = mmpbHeight;
+
+
+				// copy megamap to top
+
+				if (respectPitch)
+				{
+
+					for (int y = 0; y < Aspect.y; y++)
+					{
+						memcpy((void*)((LPBYTE)DestSurf + ((y + MegaMapInscren.top) * (*TAmainStruct_PtrPtr)->ScreenWidth) + MegaMapInscren.left), (void*)((LPBYTE)savedMEGAMAPsurface + (y * Aspect.x)), Aspect.x);
+					}
+
+				}
+
+				else
+				{
+					for (int y = 0; y < Aspect.y; y++)
+					{
+						memcpy((void*)((LPBYTE)DestSurf + ((y + MegaMapInscren.top) * (*TAmainStruct_PtrPtr)->ScreenWidth) + MegaMapInscren.left), (void*)((LPBYTE)savedMEGAMAPsurface + (y * Aspect.x)), Aspect.x);
+					}
+				}
+
 			}
 
-			//if (DrawMegamapCursor)
-			//{
-			//	// 				DDSURFACEDESC ddsd;
-			//	// 				DDRAW_INIT_STRUCT(ddsd);
 
-			//	if (UseSurfaceCursor)
+			TAStuff_Global->UpdateTAGameStuffMEGA(DestSurf, DrawMegamapTAStuff, DrawSelectAndOrder, &Blit_b);
+
+			if(!mutexlock)
+				hasframeupdated = true;
+
+
+
+			
+
+
+
+			//LAYER = 0;
+
+
+
+		//DWORD TickCount;
+		//TickCount = GetTickCount();
+
+		//if (TickCount >= nextMEGAtickcountDRAWBOX)
+		//{
+		// 
+		// 
+		// 
+		// 
+		// 
+		// 
+			
+			
+			// this function sucks
+			//TAStuff->UpdateTAGameStuffTA(DestDesc, DrawMegamapTAStuff, DrawSelectAndOrder, &Blit_b);
+
+
+
+
+			// 
+			// 
+			// 
+			// 
+			// 
+			// 
+			// 
+			//
+			//#define TimesPerSecondDRAWBOX 144
+			//			nextMEGAtickcountDRAWBOX = TickCount + (int)(1000.f / TimesPerSecondDRAWBOX); // times per second
+			//
+
+
+
+
+			// --------------------------------- this is here normally - testing
+			
+			
+
+
+
+
+
+
+
+			//for (int y = 0; y < Aspect.y; y++)
+			//{
+			//	memcpy((void*)((LPBYTE)DestDesc->lpSurface + ((y + MegaMapInscren.top) * (*TAmainStruct_PtrPtr)->ScreenWidth) + MegaMapInscren.left), (void*)((LPBYTE)savedMEGAMAPsurface + (y * Aspect.x)), Aspect.x);
+			//}
+
+
+
+
+
+
+			//LPRECT const gameRect = GameDrawer_Global->TAWGameAreaRect(NULL);
+
+			//int CursorX = MegamapControls_Global->PubCursorX;// -gameRect->left;
+			//int CursorY = MegamapControls_Global->PubCursorY;// -gameRect->top;
+
+
+			//if ((CursorY != -1)
+			//	&& (CursorX != -1)
+			//	&& (CursorX < gameRect->right)
+			//	&& (CursorY < gameRect->bottom))
+			//{
+			//	if (MegamapControls_Global == NULL || (!MegamapControls_Global->IsDrawRect(TRUE)))
 			//	{
-			//		BlitSurfaceCursor(DestSurf);
+			//		if (respectPitch)
+			//		{
+			//			TAStuff_Global->DrawCursor(DestSurf, (*TAmainStruct_PtrPtr)->ScreenWidth, (*TAmainStruct_PtrPtr)->ScreenHeight, lastPitch, CursorX, CursorY);
+
+			//		}
+			//		else
+			//		{
+			//			TAStuff_Global->DrawCursor(DestSurf, (*TAmainStruct_PtrPtr)->ScreenWidth, (*TAmainStruct_PtrPtr)->ScreenHeight, (*TAmainStruct_PtrPtr)->ScreenWidth, CursorX, CursorY);
+			//		}
 			//	}
 			//}
-		}
-
-		POINT Aspect;
-		LPBYTE PixelBits;
-		
-		if (MyMinimap_p
-			&&UnitsMap)
-		{
-			do
-			{
-				__try
-				{
-					UpdateTAProcess();
-					//IDDrawSurface::OutptTxt("Megamap Start Update Frame!");
-					if (TAInGame != DataShare->TAProgress)
-					{
-						break;
-					}
-
-					if (DrawBackground)
-					{
-						MyMinimap_p->PictureInfo(&PixelBits, &Aspect);
-					}
-
-
-					if (DrawMapped)
-					{
-						if (!Mapped_p->NowDrawMapped(PixelBits, &Aspect))
-						{
-							break;
-						}
-					}
-
-					Mapped_p->PictureInfo(&PixelBits, &Aspect);
-
-
-					if (DrawProjectile)
-					{
-						//IDDrawSurface::OutptTxt("Megamap Projectile Frame!");
-						ProjectilesMap_p->NowDrawProjectile(PixelBits, &Aspect);
-					}
-
-					if (DrawUnits)
-					{
-						//IDDrawSurface::OutptTxt("Megamap Units Frame!");
-						UnitsMap->NowDrawUnits ( PixelBits, &Aspect);
-					}
-
-					if (DrawMegamapRect)
-					{
-						if (DrawUnits)
-						{
-							//IDDrawSurface::OutptTxt("Megamap Rect Frame!");
-
-						
-							GameDrawer->MixDSufInBlit(&MegamapRect, UnitsMap->GetSurface(), NULL);
-						}
-						else
-						{
-						
-							GameDrawer->MixBitsInBlit(&MegamapRect, PixelBits, &Aspect, NULL);
-						}
-					}
-
-					TAStuff->UpdateTAGameStuff(DrawMegamapTAStuff, DrawSelectAndOrder, &Blit_b);
-
-
-
-					//IDDrawSurface::OutptTxt("Megamap TAStuff Frame!");
-					TAStuff->BlitTAGameStuff(GameDrawer->backSurface_p(), GameDrawer->TAWGameAreaRect(NULL));
-
-					if (DrawMegamapCursor
-						&& !UseSurfaceCursor)
-					{
-//						RECT lpDestRect;
-
-						//IDDrawSurface::OutptTxt("Megamap Draw Cursor Frame!");
-						//DDSURFACEDESC lpDDSurfaceDesc;
-
-						DDRAW_INIT_STRUCT(lpDDSurfaceDesc);
-
-						GameDrawer->Lock(NULL, &lpDDSurfaceDesc, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, 0);
-
-						LPRECT const gameRect = GameDrawer->TAWGameAreaRect(NULL);
-
-						int CursorX = Controler->PubCursorX - gameRect->left;
-						int CursorY = Controler->PubCursorY - gameRect->top;
-
-						//GameingState* GameingState_P = (*TAmainStruct_PtrPtr)->GameingState_Ptr;
-
-						//lpDDClipperShare->SetClipList(ScreenRegionShare, 0);
-
-						//if (GameingState_P
-						//	&& (gameingstate::MULTI == (*TAmainStruct_PtrPtr)->GameStateMask))
-						//{
-						//	IncomeStructureShare->BlitIncome((LPDIRECTDRAWSURFACE)lpDDSurfaceDesc.lpSurface);
-						//}
-
-
-
-						if ((CursorY != -1)
-							&& (CursorX != -1)
-							&& (CursorX < gameRect->right)
-							&& (CursorY < gameRect->bottom))
-						{
-							if (Controler == NULL || (!Controler->IsDrawRect(TRUE)))
-							{
-								TAStuff->DrawCursor(lpDDSurfaceDesc.lpSurface, lpDDSurfaceDesc.dwWidth, lpDDSurfaceDesc.dwHeight, lpDDSurfaceDesc.lPitch,
-									CursorX, CursorY);
-							}
-						}
-
-						GameDrawer->Unlock(lpDDSurfaceDesc.lpSurface);
-					}
-
-					GameDrawer->Flip();
-					//IDDrawSurface::OutptTxt("Megamap End Update Frame!");
-				}
-				__except (true)
-				{
-					;
-				}
-			} while (false);
 
 		}
 
-		Flipping = FALSE;
 	}
+
+	//IDDrawSurface::OutptTxt("Megamap End Update Frame!");
+//}
+//__except (true)
+//{
+	//;
+//}
+//} while (false);
+
+
+
+	Flipping = FALSE;
+	//}
+
+	//Blit_b = false;
 
 	return;// (LPBYTE)lpDDSurfaceDesc.lpSurface;
 }
@@ -779,27 +1480,27 @@ void FullScreenMinimap::LockBlit (LPVOID lpSurfaceMem, int dwWidth,int dwHeight,
 	
 }
 
-void FullScreenMinimap::BlitSurfaceCursor (LPDIRECTDRAWSURFACE DestSurf)
-{
-	if (! UseSurfaceCursor)
-	{
-		return ;
-	}
-	int CursorX= Controler->PubCursorX;
-	int CursorY= Controler->PubCursorY;
-
-	//if (DrawMegamapCursor)
-	{
-		if ((CursorY!=-1)
-			&&(CursorX!=-1))
-		{
-			if (Controler==NULL||(! Controler->IsDrawRect ( TRUE)))
-			{
-					TAStuff->DrawCursor ( DestSurf, CursorX,  CursorY);
-			}
-		}
-	}
-}
+//void FullScreenMinimap::BlitSurfaceCursor (LPDIRECTDRAWSURFACE DestSurf)
+//{
+//	if (! UseSurfaceCursor)
+//	{
+//		return ;
+//	}
+//	int CursorX= Controler->PubCursorX;
+//	int CursorY= Controler->PubCursorY;
+//
+//	//if (DrawMegamapCursor)
+//	{
+//		if ((CursorY!=-1)
+//			&&(CursorX!=-1))
+//		{
+//			if (Controler==NULL||(! Controler->IsDrawRect ( TRUE)))
+//			{
+//					TAStuff->DrawCursor ( DestSurf, CursorX,  CursorY);
+//			}
+//		}
+//	}
+//}
 void FullScreenMinimap::InitSurface (LPDIRECTDRAW TADD, BOOL VidMem)
 {
 	if (Do_b
@@ -873,11 +1574,13 @@ void FullScreenMinimap::EnterMegaMap ()
 {
 	Blit_b= TRUE;
 
-
+	megamapON = true;
 }
 void FullScreenMinimap::QuitMegaMap ( )
 {
 	Blit_b= FALSE;
+
+	megamapON = false;
 }
 
 void FullScreenMinimap::BlockGUIState ( )

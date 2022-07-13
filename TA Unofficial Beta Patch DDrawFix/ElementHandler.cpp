@@ -162,7 +162,7 @@ std::vector<GraphicElement*> CElementHandler::GetArea(int x1, int y1, int x2, in
 			ElementList::iterator eli;
 			for(eli=map[y][x].begin();eli!=map[y][x].end();++eli)
 			{// weird eli maybe invalid ptr
-				if((((*eli)->x1 >= x1) && ((*eli)->x1 <= x2) && ((*eli)->y1 >= y1) && ((*eli)->y1 <= y2)))
+			if((((*eli)->x1 >= x1) && ((*eli)->x1 <= x2) && ((*eli)->y1 >= y1) && ((*eli)->y1 <= y2)))
 					r.push_back(*eli);
 			}
 		}

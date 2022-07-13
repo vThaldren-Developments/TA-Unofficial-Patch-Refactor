@@ -169,14 +169,14 @@ class Dialog
     void ShowDialog();
     void HideDialog();
 	bool IsShow (LPRECT rect_p);
-    void BlitDialog(LPDIRECTDRAWSURFACE DestSurf);
+    void BlitDialog(LPBYTE DestSurf);
     bool Message(HWND WinProchWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
 
 	void SetAll();
 
     void DrawText(LPDIRECTDRAWSURFACE DestSurf, int x, int y, char *Text);
     void DrawSmallText(LPDIRECTDRAWSURFACE DestSurf, int x, int y, char *Text);
-    void BlitCursor(LPDIRECTDRAWSURFACE DestSurf, int x, int y);
+    void BlitCursor(LPBYTE DestSurf, int x, int y);
 };
 
 
