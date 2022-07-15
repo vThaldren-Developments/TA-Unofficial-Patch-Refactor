@@ -159,13 +159,14 @@ class Dialog
     void WriteSettings();
 
     void CorrectPos();
-    void RestoreAll();
+
 
     void SetVisibleList();
 	void RestoreCursor ();
   public:
     Dialog(BOOL VidMem_a);
     ~Dialog();
+    void RestoreAll();
     void ShowDialog();
     void HideDialog();
 	bool IsShow (LPRECT rect_p);
@@ -174,8 +175,8 @@ class Dialog
 
 	void SetAll();
 
-    void DrawText(LPDIRECTDRAWSURFACE DestSurf, int x, int y, char *Text);
-    void DrawSmallText(LPDIRECTDRAWSURFACE DestSurf, int x, int y, char *Text);
+    void DrawText(LPBYTE SurfaceMemory_, int x, int y, char *Text);
+    void DrawSmallText(LPBYTE SurfaceMemory_, int x, int y, char *Text);
     void BlitCursor(LPBYTE DestSurf, int x, int y);
 };
 

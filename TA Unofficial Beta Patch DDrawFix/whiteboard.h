@@ -121,7 +121,7 @@ class AlliesWhiteboard
     std::deque<GraphicElement*> PacketHandler;
     std::deque<MMHS> MinimapMarkerHandler;
 
-    void DrawTextInput(LPDIRECTDRAWSURFACE DestSurf);
+    void DrawTextInput(LPBYTE SurfaceMemory_);
     void TextInputKeyDown(int Key);
     void TextInputChar(char C);
     void AddTextMarker();
@@ -139,13 +139,13 @@ class AlliesWhiteboard
     void ReceiveMarkers();
     void SendMarkers();
 
-    void DrawMarkers(LPDIRECTDRAWSURFACE DestSurf);
-    void DrawTextMarker(LPDIRECTDRAWSURFACE DestSurf, int X, int Y, char *cText, char Color);
+    void DrawMarkers(LPBYTE SurfaceMemory_);
+    void DrawTextMarker(LPBYTE SurfaceMemory_, int X, int Y, char *cText, char Color);
 
   public:
     AlliesWhiteboard(BOOL VidMem);
     ~AlliesWhiteboard();
-    void Blit(LPDIRECTDRAWSURFACE DestSurf);
+    void Blit(LPBYTE SurfaceMemory_);
     void LockBlit(char *VidBuf, int Pitch);
     bool Message(HWND WinProcWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
     void Set(int iKeyCode);

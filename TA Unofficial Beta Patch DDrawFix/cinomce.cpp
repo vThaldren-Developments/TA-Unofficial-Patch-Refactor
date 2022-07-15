@@ -17,6 +17,8 @@
 #include <vector>
 #include "TAConfig.h"
 
+
+
 int X, Y;
 
 CIncome::CIncome(BOOL VidMem)
@@ -28,22 +30,22 @@ CIncome::CIncome(BOOL VidMem)
 	DDRAW_INIT_STRUCT(ddsd);
 	ddsd.dwFlags = DDSD_CAPS | DDSD_WIDTH | DDSD_HEIGHT;
 
-	if (VidMem)
-	{
-		ddsd.ddsCaps.dwCaps = DDSCAPS_OFFSCREENPLAIN | DDSCAPS_VIDEOMEMORY;
+	//if (VidMem)
+	//{
+	//	ddsd.ddsCaps.dwCaps = DDSCAPS_OFFSCREENPLAIN | DDSCAPS_VIDEOMEMORY;
 
-	}
-	else
-	{
-		ddsd.ddsCaps.dwCaps = DDSCAPS_OFFSCREENPLAIN | DDSCAPS_SYSTEMMEMORY;
-	}
+	//}
+	//else
+	//{
+	//	ddsd.ddsCaps.dwCaps = DDSCAPS_OFFSCREENPLAIN | DDSCAPS_SYSTEMMEMORY;
+	//}
 
 	ddsd.dwWidth = PlayerWidth;
 	ddsd.dwHeight = PlayerHight * 11;
 
 	TADD->CreateSurface(&ddsd, &lpIncomeSurf, NULL);
 
-	BackgroundType = 0;
+	//BackgroundType = 1;
 	ReadPos();
 	First = true;
 
@@ -62,6 +64,8 @@ CIncome::CIncome(BOOL VidMem)
 	PlayerDotColors[8] = MyConfig->GetIniInt("Player9DotColors", 130);
 	PlayerDotColors[9] = MyConfig->GetIniInt("Player10DotColors", 67);
 
+
+	LocalShare->Height = PlayerHight * 10;
 	//IDDrawSurface::OutptTxt ( "New CIncome");
 }
 
@@ -81,22 +85,27 @@ void CIncome::BlitIncome(LPBYTE DestSurf)
 	//	if (lpIncomeSurf->Restore() != DD_OK)
 	//		return;
 	//}
-	BlitState++;
+
+	SurfaceMemory = DestSurf;
+	lPitch = (*TAmainStruct_PtrPtr)->ScreenWidth;
+
+
+	//BlitState++;
 
 	//ShowAllIncome();
 	if (DataShare->TAProgress == TAInGame)
 	{
-		if (BlitState % 30 == 1)
-		{
+		//if (BlitState % 30 == 1)
+		//{
 			DDSURFACEDESC ddsd;
 			DDRAW_INIT_STRUCT(ddsd);
 			int PlayerDrawn;
 			TAdynmemStruct* Ptr = *(TAdynmemStruct**)0x00511de8;
 
-			if (lpIncomeSurf->Lock(NULL, &ddsd, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, NULL) == DD_OK)
-			{
-				SurfaceMemory = ddsd.lpSurface;
-				lPitch = ddsd.lPitch;
+			//if (lpIncomeSurf->Lock(NULL, &ddsd, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, NULL) == DD_OK)
+			//{
+				//SurfaceMemory = ddsd.lpSurface;
+				//lPitch = ddsd.lPitch;
 
 				if ((0 != (WATCH & (Ptr->Players[LocalShare->OrgLocalPlayerID].PlayerInfo->PropertyMask)))
 					|| DataShare->PlayingDemo)
@@ -104,9 +113,9 @@ void CIncome::BlitIncome(LPBYTE DestSurf)
 				else
 					PlayerDrawn = ShowAllyIncome();
 				//PlayerDrawn = ShowAllIncome();
-			}
-			else
-				SurfaceMemory = NULL;
+			//}
+			//else
+				//SurfaceMemory = NULL;
 
 			if (First == true && PlayerDrawn > 0)
 			{
@@ -114,38 +123,38 @@ void CIncome::BlitIncome(LPBYTE DestSurf)
 				CorrectPos();
 			}
 
-			lpIncomeSurf->Unlock(NULL);
-		}
+			//lpIncomeSurf->Unlock(NULL);
+		//}
 
-		RECT Dest;
-		Dest.left = posX;
-		Dest.top = posY;
-		Dest.right = posX + PlayerWidth;
-		Dest.bottom = posY + LocalShare->Height;
-		RECT Source;
-		Source.left = 0;
-		Source.top = 0;
-		Source.right = PlayerWidth;
-		Source.bottom = LocalShare->Height;
+		//RECT Dest;
+		//Dest.left = posX;
+		//Dest.top = posY;
+		//Dest.right = posX + PlayerWidth;
+		//Dest.bottom = posY + LocalShare->Height;
+		//RECT Source;
+		//Source.left = 0;
+		//Source.top = 0;
+		//Source.right = PlayerWidth;
+		//Source.bottom = LocalShare->Height;
 
-		DDBLTFX ddbltfx;
-		DDRAW_INIT_STRUCT(ddbltfx);
-		ddbltfx.ddckSrcColorkey.dwColorSpaceLowValue = 1;
-		ddbltfx.ddckSrcColorkey.dwColorSpaceHighValue = 1;
+		//DDBLTFX ddbltfx;
+		//DDRAW_INIT_STRUCT(ddbltfx);
+		//ddbltfx.ddckSrcColorkey.dwColorSpaceLowValue = 1;
+		//ddbltfx.ddckSrcColorkey.dwColorSpaceHighValue = 1;
 
 
 
-		DDSURFACEDESC srcSurfDesc;
+		//DDSURFACEDESC srcSurfDesc;
 
-		if (lpIncomeSurf->Lock(NULL, &srcSurfDesc, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, 0) == DD_OK)
-		{
-			for (int y = 0; y < Source.bottom; y++)
-			{
-				memcpy((void*)((LPBYTE)DestSurf + ((y + Dest.top) * (*TAmainStruct_PtrPtr)->ScreenWidth) + Dest.left), (void*)((LPBYTE)srcSurfDesc.lpSurface + (y * PlayerWidth)), PlayerWidth);
-			}
+		//if (lpIncomeSurf->Lock(NULL, &srcSurfDesc, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, 0) == DD_OK)
+		//{
+		//	for (int y = 0; y < Source.bottom; y++)
+		//	{
+		//		memcpy((void*)((LPBYTE)DestSurf + ((y + Dest.top) * (*TAmainStruct_PtrPtr)->ScreenWidth) + Dest.left), (void*)((LPBYTE)srcSurfDesc.lpSurface + (y * PlayerWidth)), PlayerWidth);
+		//	}
 
-			lpIncomeSurf->Unlock(NULL);
-		}
+		//	lpIncomeSurf->Unlock(NULL);
+		//}
 
 
 
@@ -170,10 +179,10 @@ void CIncome::BlitIncome(LPBYTE DestSurf)
 
 int CIncome::ShowAllIncome()
 {
-	if (BackgroundType == 2)
-		FillRect(0);
-	else
-		FillRect(1);
+	//if (BackgroundType == 2)
+	//	FillRect(0);
+	//else
+	//	FillRect(1);
 
 	DataShare->IsRunning = 15;
 
@@ -185,7 +194,7 @@ int CIncome::ShowAllIncome()
 		if (strlen(DataShare->PlayerNames[i]) > 0)
 		{
 			DataShare->IsRunning = 50;
-			ShowPlayerIncome(i, 0, j * PlayerHight);
+			ShowPlayerIncome(i, posX, posY + j * PlayerHight);
 			j++;
 		}
 	}
@@ -193,19 +202,19 @@ int CIncome::ShowAllIncome()
 	// watcher's things
 
 
-	ShowMyViewIncome(0, j * PlayerHight);
+	ShowMyViewIncome(posX, posY + j * PlayerHight);
 
 	j++;
-	LocalShare->Height = PlayerHight * j;
+	//LocalShare->Height = PlayerHight * j;
 	return j;
 }
 
 int CIncome::ShowAllyIncome()
 {
-	if (BackgroundType == 2)
-		FillRect(0);
-	else
-		FillRect(1);
+	//if (BackgroundType == 2)
+	//	FillRect(0);
+	//else
+	//	FillRect(1);
 
 	DataShare->IsRunning = 15;
 
@@ -213,26 +222,26 @@ int CIncome::ShowAllyIncome()
 
 	//int OffsetX = posX;
 	//int OffsetY = posY;
-	LocalShare->Height = 0;
+	//LocalShare->Height = 0;
 	int j = 0;
 	for (int i = 1; i < 10; i++)
 	{
 		if (DataShare->allies[i])
 		{
 			DataShare->IsRunning = 100;
-			ShowPlayerIncome(i, 0, j * PlayerHight);
+			ShowPlayerIncome(i, posX, posY + j * PlayerHight);
 			j++;
 		}
 		else if ((* (DWORD*)(*TAmainStruct_PtrPtr)->GameingState_Ptr) == gameingstate::SKIRMISH)
 		{ // currently an AI cheat
 
 			DataShare->IsRunning = 100;
-			ShowPlayerIncome(i, 0, j * PlayerHight);
+			ShowPlayerIncome(i, posX, posY + j * PlayerHight);
 			j++;
 		}
 	}
 
-	LocalShare->Height = PlayerHight * j;
+	//LocalShare->Height = PlayerHight * j;
 	return j;
 }
 
@@ -426,7 +435,8 @@ void CIncome::FillRect(char Color)
 
 	for (int i = 0; i < LocalShare->Height; i++)
 	{
-		memset(&SurfMem[i * lPitch], Color, PlayerWidth);
+		//memset(&SurfMem[i * lPitch], Color, PlayerWidth);
+		memset(&SurfMem[posX + (posY + i) * lPitch], Color, PlayerWidth);
 	}
 }
 
@@ -537,6 +547,9 @@ bool CIncome::Message(HWND WinProchWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 				posY += HIWORD(lParam) - Y;
 				X = LOWORD(lParam);
 				Y = HIWORD(lParam);
+
+				CorrectPos();
+
 				return true;
 			}
 			else
@@ -673,8 +686,10 @@ void CIncome::CorrectPos()
 
 	if (posY < 0)
 		posY = 0;
-	if (posY > (LocalShare->ScreenHeight - (PlayerHight * 2))) //always two players inside screen
-		posY = LocalShare->ScreenHeight - (PlayerHight * 2);
+	//if (posY > (LocalShare->ScreenHeight - (PlayerHight * 2))) //always two players inside screen
+		//posY = LocalShare->ScreenHeight - (PlayerHight * 2);
+ 	if (posY > (LocalShare->ScreenHeight - (PlayerHight * 10))) //always two players inside screen
+		posY = LocalShare->ScreenHeight - (PlayerHight * 10);
 
 }
 
@@ -686,15 +701,22 @@ unsigned char CIncome::GetPlayerColor(int Player)
 
 void CIncome::DrawPlayerRect(int posx, int posy, char Color)
 {
-	if (SurfaceMemory == NULL)
-		return;
+	//TAdynmemStruct* Ptr;
+	//Ptr = *(TAdynmemStruct**)0x00511de8;
 
-	char* SurfMem = (char*)SurfaceMemory;
+	//if (
+	//	Ptr->GameingState_Ptr
+	//	&& (gameingstate::MULTI == Ptr->GameingState_Ptr->State))
+	//{
+		if (SurfaceMemory == NULL)
+			return;
 
-	for (int i = 0; i < 8; i++)
-	{
-		memset(&SurfMem[posx + (posy + i) * lPitch], Color, 8);
-	}
+		char* SurfMem = (char*)SurfaceMemory;
 
+		for (int i = 0; i < 8; i++)
+		{
+			memset(&SurfMem[posx + (posy + i) * lPitch], Color, 8);
+		}
+	//}
 }
 

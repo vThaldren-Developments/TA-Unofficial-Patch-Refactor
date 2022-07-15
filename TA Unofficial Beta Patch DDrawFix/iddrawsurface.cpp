@@ -144,48 +144,50 @@ IDDrawSurface::IDDrawSurface(LPDIRECTDRAW lpDD, LPDDSURFACEDESC lpTAddsc, LPDIRE
 // 	}
 
 	// fix later (remove these flags altogether)!!! - also where is that other override thingy i made? - mass code overhaul..
+	
+
 	VidMem = MyConfig->GetIniBool("UseVideoMemory", TRUE);
 
 
-	if (VidMem)
-	{
-		lpTAddsc->ddsCaps.dwCaps &= ~(DDSCAPS_SYSTEMMEMORY);
-		lpTAddsc->ddsCaps.dwCaps |= DDSCAPS_VIDEOMEMORY;
-	}
-	else
-	{
-		lpTAddsc->ddsCaps.dwCaps &= ~(DDSCAPS_VIDEOMEMORY);
-		lpTAddsc->ddsCaps.dwCaps |= DDSCAPS_SYSTEMMEMORY;
-	}
+	//if (VidMem)
+	//{
+	//	lpTAddsc->ddsCaps.dwCaps &= ~(DDSCAPS_SYSTEMMEMORY);
+	//	lpTAddsc->ddsCaps.dwCaps |= DDSCAPS_VIDEOMEMORY;
+	//}
+	//else
+	//{
+	//	lpTAddsc->ddsCaps.dwCaps &= ~(DDSCAPS_VIDEOMEMORY);
+	//	lpTAddsc->ddsCaps.dwCaps |= DDSCAPS_SYSTEMMEMORY;
+	//}
 
 	result = lpDD->CreateSurface(lpTAddsc, arg2, arg3);
-	if (result != DD_OK)
-	{
-		//VidMem= ! VidMem;
+	//if (result != DD_OK)
+	//{
+	//	//VidMem= ! VidMem;
 
-		//MyConfig->SetIniBool ( "UseVideoMemory", VidMem);
+	//	//MyConfig->SetIniBool ( "UseVideoMemory", VidMem);
 
-		if (VidMem)
-		{
-			lpTAddsc->ddsCaps.dwCaps &= ~(DDSCAPS_SYSTEMMEMORY);
-			lpTAddsc->ddsCaps.dwCaps |= DDSCAPS_VIDEOMEMORY;
-		}
-		else
-		{
-			lpTAddsc->ddsCaps.dwCaps &= ~(DDSCAPS_VIDEOMEMORY);
-			lpTAddsc->ddsCaps.dwCaps |= DDSCAPS_SYSTEMMEMORY;
-		}
-		result = lpDD->CreateSurface(lpTAddsc, arg2, arg3);
-	}
+	//	if (VidMem)
+	//	{
+	//		lpTAddsc->ddsCaps.dwCaps &= ~(DDSCAPS_SYSTEMMEMORY);
+	//		lpTAddsc->ddsCaps.dwCaps |= DDSCAPS_VIDEOMEMORY;
+	//	}
+	//	else
+	//	{
+	//		lpTAddsc->ddsCaps.dwCaps &= ~(DDSCAPS_VIDEOMEMORY);
+	//		lpTAddsc->ddsCaps.dwCaps |= DDSCAPS_SYSTEMMEMORY;
+	//	}
+	//	result = lpDD->CreateSurface(lpTAddsc, arg2, arg3);
+	//}
 	*rtn_p = result;
 
 	lpFront = *arg2;
 	LocalShare->TADirectDrawFrontSurface = lpFront;
 
 
-	//SettingsDialog = new Dialog(VidMem);
+	SettingsDialog = new Dialog(VidMem);
 	WhiteBoard = new AlliesWhiteboard(VidMem);
-	//Income = new CIncome(VidMem);
+	Income = new CIncome(VidMem);
 	TAHook = new CTAHook(VidMem);
 	CommanderWarp = new CWarp(VidMem);
 	SharedRect = new CMapRect(VidMem);
@@ -783,7 +785,7 @@ HRESULT __stdcall IDDrawSurface::Unlock(LPVOID arg1)
 
 
 			if(!megamapON)
-				WhiteBoard->Blit(lpFront);
+				WhiteBoard->Blit((LPBYTE)SurfaceMemory);
 
 
 
@@ -797,7 +799,7 @@ HRESULT __stdcall IDDrawSurface::Unlock(LPVOID arg1)
 			//	}
 			//}
 
-#ifdef USEMEGAMAP
+//#ifdef USEMEGAMAP
 
 			//LPBYTE lpSurfaceMem = NULL;
 
@@ -825,17 +827,17 @@ HRESULT __stdcall IDDrawSurface::Unlock(LPVOID arg1)
 			//{
 				//lpDDClipper->SetClipList(ScreenRegion, 0);
 
-				//if (GameingState_P
-				//	&& (gameingstate::MULTI == GameingState_P->State))
-				//{
-				//	Income->BlitIncome(lpBack);
-				//}
+				if (GameingState_P
+					&& (gameingstate::MULTI == GameingState_P->State))
+				{
+					Income->BlitIncome((LPBYTE)SurfaceMemory);
+				}
 			//}
-#endif	
+//#endif	
 //#else
 
 
-			lpDDClipper->SetClipList(ScreenRegion, 0);
+			//lpDDClipper->SetClipList(ScreenRegion, 0);
 
 			//if (GameingState_P
 			//	&& (gameingstate::MULTI == GameingState_P->State))
@@ -872,16 +874,16 @@ HRESULT __stdcall IDDrawSurface::Unlock(LPVOID arg1)
 			//
 
 
-
-#ifdef USEMEGAMAP
-
-			/*
-			if ((GUIExpander)
-				&& (GUIExpander->myMinimap))
-			{
-				if (lpSurfaceMem != NULL)
+//
+//#ifdef USEMEGAMAP
+//
+////			
+//			if ((GUIExpander)
+//				&& (GUIExpander->myMinimap))
+//			{
+				if (SurfaceMemory != NULL)
 				{
-					DDSURFACEDESC lpDDSurfaceDesc;
+					//DDSURFACEDESC lpDDSurfaceDesc;
 
 					//this->Lock(NULL, &lpDDSurfaceDesc, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, 0);
 
@@ -891,13 +893,16 @@ HRESULT __stdcall IDDrawSurface::Unlock(LPVOID arg1)
 					Aspect.x = lPitch;
 					Aspect.y = dwHeight;
 
-					CopyGafToBits((LPBYTE)lpSurfaceMem, &Aspect, MouseX, MouseY, Cursor_GafP);
+					POINT pt;
+					GetCursorPos(&pt);
 
-					this->Unlock(lpDDSurfaceDesc.lpSurface);
+					CopyGafToBits((LPBYTE)SurfaceMemory, &Aspect, pt.x, pt.y, Cursor_GafP);
+
+					//this->Unlock(lpDDSurfaceDesc.lpSurface);
 				}
-			}
-			*/
-#endif
+			//}
+			
+//#endif
 
 
 
@@ -1576,9 +1581,9 @@ LRESULT CALLBACK WinProc(HWND WinProcWnd, UINT Msg, WPARAM wParam, LPARAM lParam
 			&& (((AlliesWhiteboard*)LocalShare->Whiteboard)->Message(WinProcWnd, Msg, wParam, lParam)))
 			return 0;
 
-		//if ((NULL != LocalShare->Income)
-		//	&& (((CIncome*)LocalShare->Income)->Message(WinProcWnd, Msg, wParam, lParam)))
-		//	return 0;  //message handled by the income class
+		if ((NULL != LocalShare->Income)
+			&& (((CIncome*)LocalShare->Income)->Message(WinProcWnd, Msg, wParam, lParam)))
+			return 0;  //message handled by the income class
 
 		//if (NULL != (LocalShare->Dialog))
 		//{

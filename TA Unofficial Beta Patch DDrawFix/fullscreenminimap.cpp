@@ -485,7 +485,7 @@ FullScreenMinimap::FullScreenMinimap (BOOL Doit, int FPSlimit)
 
 		DWORD junk;
 
-		// fix dumb mouse lag set by Cavedog?!?!?!?? in MouseThread
+
 		if (VirtualProtect((LPVOID)0x004C29C5, 3, PAGE_EXECUTE_READWRITE, &junk))
 		{
 			memset((void*)0x004C29C5, 0x90, 3);

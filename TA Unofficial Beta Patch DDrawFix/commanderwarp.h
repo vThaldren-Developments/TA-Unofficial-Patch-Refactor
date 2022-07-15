@@ -22,7 +22,7 @@ class CWarp
     bool WithinButton(int x, int y);
     bool ButtonDown;
     bool StartedinButton;
-    void BlitBtn(LPDIRECTDRAWSURFACE DestSurf);
+    void BlitBtn(LPBYTE SurfaceMemory_);
     short yPos;
     short xPos;
   public:

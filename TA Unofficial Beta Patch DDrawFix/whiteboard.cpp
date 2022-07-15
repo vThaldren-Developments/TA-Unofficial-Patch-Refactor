@@ -25,6 +25,8 @@ const double PI = 3.1415926535;
 
 AlliesWhiteboard::AlliesWhiteboard(BOOL VidMem)
 {
+	VidMem = false;
+
 	lpInputBox = NULL;
 	lpSmallCircle = NULL;
 
@@ -110,6 +112,7 @@ AlliesWhiteboard::AlliesWhiteboard(BOOL VidMem)
 }
 
 
+
 AlliesWhiteboard::~AlliesWhiteboard()
 {
 	if(lpInputBox)
@@ -121,7 +124,7 @@ AlliesWhiteboard::~AlliesWhiteboard()
 
 }
 
-void AlliesWhiteboard::Blit(LPDIRECTDRAWSURFACE DestSurf)
+void AlliesWhiteboard::Blit(LPBYTE SurfaceMemory_)
 {
 	if(lpInputBox->IsLost() != DD_OK)
 	{
@@ -131,10 +134,10 @@ void AlliesWhiteboard::Blit(LPDIRECTDRAWSURFACE DestSurf)
 	ReceiveMarkers();
 	SendMarkers();
 
-	DrawMarkers(DestSurf);
+	DrawMarkers(SurfaceMemory_);
 
 	if(InputShown)
-		DrawTextInput(DestSurf);
+		DrawTextInput(SurfaceMemory_);
 }
 
 void AlliesWhiteboard::LockBlit(char *VidBuf, int Pitch)
@@ -371,14 +374,14 @@ bool AlliesWhiteboard::Message(HWND WinProcWnd, UINT Msg, WPARAM wParam, LPARAM 
 			{
 				EreaseArea(LOWORD(lParam)-128, HIWORD(lParam)-32);
 			}
-			if(Move)
-			{
-				if(CurrentElement)
-				{
-					PacketHandler.push_back(new GraphicMoveText(CurrentElement->x1, CurrentElement->y1, *MapX+LOWORD(lParam)-128, *MapY+HIWORD(lParam)-32, *PlayerColor));
-					CurrentElement = ElementHandler.MoveTextElement(CurrentElement, *MapX+LOWORD(lParam)-128, *MapY+HIWORD(lParam)-32);
-				}
-			}
+			//if(Move)
+			//{
+				//if(CurrentElement)
+				//{
+					//PacketHandler.push_back(new GraphicMoveText(CurrentElement->x1, CurrentElement->y1, *MapX+LOWORD(lParam)-128, *MapY+HIWORD(lParam)-32, *PlayerColor));
+					//CurrentElement = ElementHandler.MoveTextElement(CurrentElement, *MapX+LOWORD(lParam)-128, *MapY+HIWORD(lParam)-32);
+				//}
+			//}
 		}
 		break;
 	}
@@ -409,16 +412,16 @@ void AlliesWhiteboard::InstantScrollTo(int x, int y)
 	*(MapY + 2)= y;
 }
 
-void AlliesWhiteboard::DrawTextInput(LPDIRECTDRAWSURFACE DestSurf)
+void AlliesWhiteboard::DrawTextInput(LPBYTE SurfaceMemory_)
 {
 	Dialog *DialogPTR = (Dialog*)LocalShare->Dialog;
 	int BFHalfX = (LocalShare->ScreenWidth-128)/2 + 128;
 	int BFHalfY = (LocalShare->ScreenHeight-64)/2 + 32;
 
 	if(CurrentElement)
-		DialogPTR->DrawText(DestSurf, BFHalfX-InputBoxWidth/2+5, BFHalfY-InputBoxHeight/2-13, "Edit Textmarker");
+		DialogPTR->DrawText(SurfaceMemory_, BFHalfX-InputBoxWidth/2+5, BFHalfY-InputBoxHeight/2-13, "Edit Textmarker");
 	else
-		DialogPTR->DrawText(DestSurf, BFHalfX-InputBoxWidth/2+5, BFHalfY-InputBoxHeight/2-13, "Add Textmarker");
+		DialogPTR->DrawText(SurfaceMemory_, BFHalfX-InputBoxWidth/2+5, BFHalfY-InputBoxHeight/2-13, "Add Textmarker");
 
 	DDBLTFX ddbltfx;
 	DDRAW_INIT_STRUCT(ddbltfx);
@@ -429,12 +432,30 @@ void AlliesWhiteboard::DrawTextInput(LPDIRECTDRAWSURFACE DestSurf)
 	Dest.top = BFHalfY-InputBoxHeight/2;
 	Dest.right = Dest.left+InputBoxWidth;
 	Dest.bottom = Dest.top+InputBoxHeight;
-	if(DestSurf->Blt(&Dest, lpInputBox, NULL, DDBLT_ASYNC | DDBLT_KEYSRCOVERRIDE, &ddbltfx)!=DD_OK)
+
+	DDSURFACEDESC locked;
+	DDRAW_INIT_STRUCT(locked);
+
+	if (lpInputBox->Lock(NULL, &locked, DDLOCK_SURFACEMEMORYPTR | DDLOCK_WAIT, NULL) == DD_OK)
 	{
-		DestSurf->Blt(&Dest, lpInputBox, NULL, DDBLT_WAIT | DDBLT_KEYSRCOVERRIDE, &ddbltfx);
+
+		for (int y2 = 0; y2 < locked.dwHeight; y2++)
+		{
+			memcpy((void*)(SurfaceMemory_ + ((y2 + Dest.top) * (*TAmainStruct_PtrPtr)->ScreenWidth) + Dest.left), ((LPBYTE)locked.lpSurface + y2 * locked.lPitch), locked.dwWidth);
+		}
+
+		lpInputBox->Unlock(NULL);
 	}
 
-	DialogPTR->DrawSmallText(DestSurf, BFHalfX-(InputBoxWidth/2)+14, BFHalfY-5, Text);
+	//if(DestSurf->Blt(&Dest, lpInputBox, NULL, DDBLT_ASYNC | DDBLT_KEYSRCOVERRIDE, &ddbltfx)!=DD_OK)
+	//{
+	//	DestSurf->Blt(&Dest, lpInputBox, NULL, DDBLT_WAIT | DDBLT_KEYSRCOVERRIDE, &ddbltfx);
+	//}
+
+
+
+
+	DialogPTR->DrawSmallText(SurfaceMemory_, BFHalfX-(InputBoxWidth/2)+14, BFHalfY-5, Text);
 
 	//draw cursor if textbox overlap
 	//if((MouseX-128)>Dest.left-10 && (MouseX-128)<Dest.right && (MouseY-32)>Dest.top-34 && (MouseY-32)<Dest.bottom)
@@ -530,10 +551,13 @@ void AlliesWhiteboard::RestoreAll()
 	{
 		RestoreFromPCX(14, lpSmallCircle);
 	}
+
+	Dialog* dialog = (Dialog*)LocalShare->Dialog;
+	dialog->RestoreAll();
 	//
 }
 
-void AlliesWhiteboard::DrawMarkers(LPDIRECTDRAWSURFACE DestSurf)
+void AlliesWhiteboard::DrawMarkers(LPBYTE SurfaceMemory_)
 {
 	std::vector<GraphicElement*> ElementPTR;
 	int x1 = *MapX-75;
@@ -549,7 +573,7 @@ void AlliesWhiteboard::DrawMarkers(LPDIRECTDRAWSURFACE DestSurf)
 	{
 		GraphicText *MarkerPTR = (GraphicText*)ElementPTR[i];
 		if(MarkerPTR->Type == ClassGraphicText)
-			DrawTextMarker (DestSurf, MarkerPTR->x1, MarkerPTR->y1, MarkerPTR->text, MarkerPTR->Color);
+			DrawTextMarker (SurfaceMemory_, MarkerPTR->x1, MarkerPTR->y1, MarkerPTR->text, MarkerPTR->Color);
 	}
 }
 
@@ -632,7 +656,7 @@ void AlliesWhiteboard::GetMarkers(MarkerArray *Markers)
 
 }
 
-void AlliesWhiteboard::DrawTextMarker(LPDIRECTDRAWSURFACE DestSurf, int X, int Y, char *cText, char C)
+void AlliesWhiteboard::DrawTextMarker(LPBYTE SurfaceMemory_, int X, int Y, char *cText, char C)
 {
 	int x = X - *MapX + 128;
 	int y = Y - *MapY + 32;
@@ -652,13 +676,29 @@ void AlliesWhiteboard::DrawTextMarker(LPDIRECTDRAWSURFACE DestSurf, int X, int Y
 	Source.right = Source.left+PerPlayerMarkerWidth;
 	Source.bottom = PerPlayerMarkerHeight;
 	//DestSurf->Blt(&Dest, lpSmallCircle, &Source, DDBLT_ASYNC | DDBLT_KEYSRCOVERRIDE, &ddbltfx);
-	if(DestSurf->Blt(&Dest, lpSmallCircle, &Source, DDBLT_ASYNC | DDBLT_KEYSRCOVERRIDE, &ddbltfx)!=DD_OK)
+
+	//if(DestSurf->Blt(&Dest, lpSmallCircle, &Source, DDBLT_ASYNC | DDBLT_KEYSRCOVERRIDE, &ddbltfx)!=DD_OK)
+	//{
+	//	DestSurf->Blt(&Dest, lpSmallCircle, &Source, DDBLT_WAIT | DDBLT_KEYSRCOVERRIDE, &ddbltfx);
+	//}
+
+
+	DDSURFACEDESC locked;
+	DDRAW_INIT_STRUCT(locked);
+
+	if (lpSmallCircle->Lock(NULL, &locked, DDLOCK_SURFACEMEMORYPTR | DDLOCK_WAIT, NULL) == DD_OK)
 	{
-		DestSurf->Blt(&Dest, lpSmallCircle, &Source, DDBLT_WAIT | DDBLT_KEYSRCOVERRIDE, &ddbltfx);
+		for (int y2 = 0; y2 < locked.dwHeight; y2++)
+		{
+			if (Dest.top > 0 && Dest.bottom + locked.dwHeight < (*TAmainStruct_PtrPtr)->ScreenHeight)
+				memcpy((void*)(SurfaceMemory_ + (y2 + Dest.top) * (*TAmainStruct_PtrPtr)->ScreenWidth + Dest.left), (LPBYTE)locked.lpSurface + y2 * locked.lPitch, Source.right - Source.left);
+		}
+
+		lpSmallCircle->Unlock(NULL);
 	}
 
 	Dialog *pDialog = (Dialog*)LocalShare->Dialog;
-	pDialog->DrawText(DestSurf, x+TextMarkerWidth , y-(PerPlayerMarkerHeight/ 2), cText);
+	pDialog->DrawText(SurfaceMemory_, x+TextMarkerWidth , y-(PerPlayerMarkerHeight/ 2), cText);
 }
 
 void AlliesWhiteboard::DeleteMarker(int X, int Y)

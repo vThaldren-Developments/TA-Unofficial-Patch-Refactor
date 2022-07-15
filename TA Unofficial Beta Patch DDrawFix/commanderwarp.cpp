@@ -145,7 +145,7 @@ bool CWarp::WithinButton(int x, int y)
 		return false;
 }
 
-void CWarp::BlitBtn(LPDIRECTDRAWSURFACE DestSurf)
+void CWarp::BlitBtn(LPBYTE SurfaceMemory_)
 {
 	Dialog *DialogPTR = (Dialog*)LocalShare->Dialog;
 
@@ -159,12 +159,30 @@ void CWarp::BlitBtn(LPDIRECTDRAWSURFACE DestSurf)
 	Source.top = 0;
 	Source.right = ButtonWidth + ButtonDown*ButtonWidth;
 	Source.bottom = ButtonHeight;
+
 	//DestSurf->Blt(&Dest, lpButton, &Source, DDBLT_ASYNC, NULL);
- 	if(DestSurf->Blt(&Dest, lpButton, &Source, DDBLT_ASYNC, NULL)!=DD_OK)
- 	{
- 		DestSurf->Blt(&Dest, lpButton, &Source, DDBLT_WAIT , NULL);
- 	}
 
 
-	DialogPTR->DrawText(DestSurf, ButtonXPos+3+ButtonDown, ButtonYPos+4+ButtonDown, "Done");
+	DDSURFACEDESC locked;
+
+	lpButton->Lock(NULL, &locked, DDLOCK_SURFACEMEMORYPTR, NULL);
+
+	for (int y = 0; y < locked.dwHeight; y++)
+	{
+		memcpy((void*)(SurfaceMemory_ + (y + Dest.top) * locked.dwWidth + Dest.left), ((LPBYTE)locked.lpSurface + y * locked.dwWidth), locked.dwWidth);
+	}
+
+	lpButton->Unlock(NULL);
+
+
+
+
+
+ 	//if(DestSurf->Blt(&Dest, lpButton, &Source, DDBLT_ASYNC, NULL)!=DD_OK)
+ 	//{
+ 	//	DestSurf->Blt(&Dest, lpButton, &Source, DDBLT_WAIT , NULL);
+ 	//}
+
+
+	DialogPTR->DrawText(SurfaceMemory_, ButtonXPos+3+ButtonDown, ButtonYPos+4+ButtonDown, "Done");
 }
