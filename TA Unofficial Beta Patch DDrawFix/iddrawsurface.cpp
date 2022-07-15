@@ -146,8 +146,9 @@ IDDrawSurface::IDDrawSurface(LPDIRECTDRAW lpDD, LPDDSURFACEDESC lpTAddsc, LPDIRE
 	// fix later (remove these flags altogether)!!! - also where is that other override thingy i made? - mass code overhaul..
 	
 
-	VidMem = MyConfig->GetIniBool("UseVideoMemory", TRUE);
+	//VidMem = MyConfig->GetIniBool("UseVideoMemory", TRUE);
 
+	VidMem = false;
 
 	//if (VidMem)
 	//{
@@ -881,24 +882,29 @@ HRESULT __stdcall IDDrawSurface::Unlock(LPVOID arg1)
 //			if ((GUIExpander)
 //				&& (GUIExpander->myMinimap))
 //			{
-				if (SurfaceMemory != NULL)
+			
+				UpdateTAProcess();
+				if (DataShare->TAProgress == TAInGame)
 				{
-					//DDSURFACEDESC lpDDSurfaceDesc;
+					if (SurfaceMemory != NULL)
+					{
+						//DDSURFACEDESC lpDDSurfaceDesc;
 
-					//this->Lock(NULL, &lpDDSurfaceDesc, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, 0);
+						//this->Lock(NULL, &lpDDSurfaceDesc, DDLOCK_WAIT | DDLOCK_SURFACEMEMORYPTR, 0);
 
-					GAFFrame* Cursor_GafP = (*TAProgramStruct_PtrPtr)->Cursor;
+						GAFFrame* Cursor_GafP = (*TAProgramStruct_PtrPtr)->Cursor;
 
-					POINT Aspect;
-					Aspect.x = lPitch;
-					Aspect.y = dwHeight;
+						POINT Aspect;
+						Aspect.x = lPitch;
+						Aspect.y = dwHeight;
 
-					POINT pt;
-					GetCursorPos(&pt);
+						POINT pt;
+						GetCursorPos(&pt);
 
-					CopyGafToBits((LPBYTE)SurfaceMemory, &Aspect, pt.x, pt.y, Cursor_GafP);
+						CopyGafToBits((LPBYTE)SurfaceMemory, &Aspect, pt.x, pt.y, Cursor_GafP);
 
-					//this->Unlock(lpDDSurfaceDesc.lpSurface);
+						//this->Unlock(lpDDSurfaceDesc.lpSurface);
+					}
 				}
 			//}
 			

@@ -511,6 +511,20 @@ bool CIncome::Message(HWND WinProchWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 		if (DataShare->TAProgress != TAInGame)
 			return false;
 
+
+		int j = 0;
+		for (int i = 1; i < 10; i++)
+		{
+			if (DataShare->allies[i])
+			{
+				j++;
+			}
+		}
+
+		if (j == 0)
+			return false;
+
+
 		TAdynmemStruct* Ptr;
 		Ptr = *(TAdynmemStruct**)0x00511de8;
 
